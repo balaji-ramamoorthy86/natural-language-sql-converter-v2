@@ -1,0 +1,303 @@
+/* Custom styles for the Natural Language to SQL Converter */
+
+/* Ensure consistent height for cards */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Code block styling */
+pre {
+    background-color: var(--bs-gray-900);
+    border: 1px solid var(--bs-gray-700);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+pre code {
+    background: none !important;
+    padding: 0 !important;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Syntax highlighting enhancements */
+.token.keyword {
+    color: #569cd6 !important;
+    font-weight: bold;
+}
+
+.token.string {
+    color: #ce9178 !important;
+}
+
+.token.number {
+    color: #b5cea8 !important;
+}
+
+.token.comment {
+    color: #6a9955 !important;
+    font-style: italic;
+}
+
+.token.operator {
+    color: #d4d4d4 !important;
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Form enhancements */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Alert enhancements */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.alert-success {
+    background-color: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
+    border-left: 4px solid var(--bs-success);
+}
+
+.alert-danger {
+    background-color: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger-text-emphasis);
+    border-left: 4px solid var(--bs-danger);
+}
+
+.alert-warning {
+    background-color: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+    border-left: 4px solid var(--bs-warning);
+}
+
+.alert-info {
+    background-color: var(--bs-info-bg-subtle);
+    color: var(--bs-info-text-emphasis);
+    border-left: 4px solid var(--bs-info);
+}
+
+/* Button enhancements */
+.btn-primary {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, #0056b3 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, var(--bs-primary) 100%);
+    transform: translateY(-1px);
+}
+
+/* List group enhancements */
+.list-group-item-action {
+    transition: all 0.2s ease-in-out;
+}
+
+.list-group-item-action:hover {
+    background-color: var(--bs-gray-800);
+    transform: translateX(5px);
+}
+
+/* Schema table styling */
+.schema-table {
+    font-size: 0.875rem;
+}
+
+.schema-table th {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700);
+    font-weight: 600;
+}
+
+.schema-table td {
+    border-color: var(--bs-gray-700);
+    vertical-align: middle;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Navbar enhancements */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+/* Footer styling */
+footer {
+    margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    pre {
+        font-size: 0.75rem;
+        max-height: 250px;
+    }
+}
+
+/* History modal styling */
+.history-item {
+    border-left: 3px solid var(--bs-primary);
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--bs-gray-900);
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+.history-item:hover {
+    background-color: var(--bs-gray-800);
+    cursor: pointer;
+}
+
+.history-query {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    background-color: var(--bs-gray-800);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+/* Validation results styling */
+.validation-item {
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.validation-error {
+    background-color: var(--bs-danger-bg-subtle);
+    border-left: 3px solid var(--bs-danger);
+}
+
+.validation-warning {
+    background-color: var(--bs-warning-bg-subtle);
+    border-left: 3px solid var(--bs-warning);
+}
+
+.validation-suggestion {
+    background-color: var(--bs-info-bg-subtle);
+    border-left: 3px solid var(--bs-info);
+}
+
+.validation-success {
+    background-color: var(--bs-success-bg-subtle);
+    border-left: 3px solid var(--bs-success);
+}
+
+/* Copy button animation */
+.copy-success {
+    animation: copyFlash 0.5s ease-in-out;
+}
+
+@keyframes copyFlash {
+    0% { background-color: var(--bs-success); }
+    100% { background-color: var(--bs-primary); }
+}
+
+/* Schema visualization */
+.schema-table-card {
+    border: 1px solid var(--bs-gray-600);
+    margin-bottom: 1rem;
+}
+
+.schema-table-header {
+    background-color: var(--bs-gray-800);
+    font-weight: 600;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--bs-gray-600);
+}
+
+.schema-column {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--bs-gray-700);
+}
+
+.schema-column:last-child {
+    border-bottom: none;
+}
+
+.column-type {
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: var(--bs-info);
+}
+
+/* Loading spinner customization */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Smooth transitions */
+* {
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* Focus states */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Dark mode specific adjustments */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #1a1a1a;
+    --bs-body-color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .card {
+    --bs-card-bg: #2d2d2d;
+    --bs-card-border-color: #404040;
+}
+
+[data-bs-theme="dark"] .modal-content {
+    background-color: #2d2d2d;
+    border-color: #404040;
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #3d3d3d;
+    border-color: #555;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: #3d3d3d;
+    border-color: var(--bs-primary);
+    color: #e9ecef;
+}
