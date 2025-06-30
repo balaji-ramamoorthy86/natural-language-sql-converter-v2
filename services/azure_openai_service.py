@@ -246,6 +246,8 @@ class AzureOpenAIService:
             'reindex', 'rebuild', 'analyze', 'optimize', 'vacuum', 'shrink', 'checkpoint',
             # Lock/constraint operations
             'lock', 'unlock', 'disable', 'enable',
+            # System stored procedures (SQL Server)
+            'sp_', 'xp_', 'fn_', 'sys.',
             # Action words that imply modification
             'add', 'modify', 'change', 'remove', 'raise'
         ]
@@ -253,7 +255,7 @@ class AzureOpenAIService:
         if any(op in nl_lower for op in dangerous_operations):
             return {
                 'success': False,
-                'error': 'Only SELECT queries are allowed. All data modification, administrative, and maintenance operations are prohibited for security. This includes: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE, MERGE, UPSERT, BULK operations, data loading, backup/restore, index maintenance, and privilege management.',
+                'error': 'Only SELECT queries are allowed. All data modification, administrative, maintenance operations, and system stored procedures are prohibited for security. This includes: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE, MERGE, UPSERT, BULK operations, data loading, backup/restore, index maintenance, privilege management, and system procedures (sp_, xp_, fn_, sys.).',
                 'fallback': True
             }
         
