@@ -1,0 +1,1106 @@
+// Natural Language to SQL Converter - Frontend JavaScript
+
+class SQLConverter {
+    constructor() {
+        this.initializeEventListeners();
+        this.loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        this.historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+        
+        // Initialize Prism.js for syntax highlighting
+        if (typeof Prism !== 'undefined') {
+            Prism.highlightAll();
+        }
+    }
+
+    initializeEventListeners() {
+        // Form submission
+        const form = document.getElementById('sqlConverterForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+        }
+
+        // Example queries
+        document.querySelectorAll('.example-query').forEach(button => {
+            button.addEventListener('click', (e) => this.handleExampleClick(e));
+        });
+
+        // Schema selection
+        const schemaSelect = document.getElementById('schemaSelect');
+        if (schemaSelect) {
+            schemaSelect.addEventListener('change', (e) => this.handleSchemaChange(e));
+        }
+    }
+
+    async handleFormSubmit(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const data = {
+            natural_language: formData.get('natural_language'),
+            schema_context: formData.get('schema_context') || ''
+        };
+
+        if (!data.natural_language.trim()) {
+            this.showError('Please enter a natural language description.');
+            return;
+        }
+
+        this.showLoading(true);
+        
+        try {
+            const response = await fetch('/convert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.displaySQLResult(result);
+                this.showSuccess('SQL query generated successfully!');
+            } else {
+                this.showError(result.error || 'Failed to generate SQL query');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showError('Network error occurred. Please try again.');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    handleExampleClick(event) {
+        const query = event.target.dataset.query;
+        const textarea = document.getElementById('naturalLanguageInput');
+        if (textarea) {
+            textarea.value = query;
+            textarea.focus();
+        }
+    }
+
+    async handleSchemaChange(event) {
+        const schemaName = event.target.value;
+        
+        if (schemaName) {
+            await this.loadSchemaDetails(schemaName);
+        } else {
+            this.hideSchemaInfo();
+        }
+    }
+
+    displaySQLResult(result) {
+        // Show the SQL output section
+        const sqlOutput = document.getElementById('sqlOutput');
+        const emptyState = document.getElementById('emptyState');
+        const errorState = document.getElementById('errorState');
+        const outputActions = document.getElementById('outputActions');
+
+        if (sqlOutput && emptyState && errorState && outputActions) {
+            emptyState.classList.add('d-none');
+            errorState.classList.add('d-none');
+            sqlOutput.classList.remove('d-none');
+            outputActions.classList.remove('d-none');
+        }
+
+        // Display the SQL code
+        const sqlCode = document.getElementById('sqlCode');
+        if (sqlCode) {
+            sqlCode.textContent = result.sql;
+            
+            // Re-highlight syntax
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightElement(sqlCode);
+            }
+        }
+
+        // Display explanation
+        const explanationText = document.getElementById('explanationText');
+        if (explanationText && result.explanation) {
+            explanationText.textContent = result.explanation;
+        }
+
+        // Display validation results if available
+        if (result.validation) {
+            this.displayValidationResults(result.validation);
+        }
+
+        // Store the current SQL for later use
+        this.currentSQL = result.sql;
+        this.currentQueryId = result.query_id;
+    }
+
+    displayValidationResults(validation) {
+        const validationResults = document.getElementById('validationResults');
+        const validationContent = document.getElementById('validationContent');
+        
+        if (!validationResults || !validationContent) return;
+
+        let html = '';
+
+        // Validation status
+        if (validation.is_valid) {
+            html += '<div class="validation-item validation-success">';
+            html += '<i class="fas fa-check-circle me-2"></i>';
+            html += '<strong>Valid SQL Query</strong>';
+            html += '</div>';
+        } else {
+            html += '<div class="validation-item validation-error">';
+            html += '<i class="fas fa-exclamation-circle me-2"></i>';
+            html += '<strong>SQL Validation Failed</strong>';
+            html += '</div>';
+        }
+
+        // Errors
+        if (validation.errors && validation.errors.length > 0) {
+            validation.errors.forEach(error => {
+                html += '<div class="validation-item validation-error">';
+                html += '<i class="fas fa-times-circle me-2"></i>';
+                html += `<strong>Error:</strong> ${this.escapeHtml(error)}`;
+                html += '</div>';
+            });
+        }
+
+        // Warnings
+        if (validation.warnings && validation.warnings.length > 0) {
+            validation.warnings.forEach(warning => {
+                html += '<div class="validation-item validation-warning">';
+                html += '<i class="fas fa-exclamation-triangle me-2"></i>';
+                html += `<strong>Warning:</strong> ${this.escapeHtml(warning)}`;
+                html += '</div>';
+            });
+        }
+
+        // Suggestions
+        if (validation.suggestions && validation.suggestions.length > 0) {
+            validation.suggestions.forEach(suggestion => {
+                html += '<div class="validation-item validation-suggestion">';
+                html += '<i class="fas fa-lightbulb me-2"></i>';
+                html += `<strong>Suggestion:</strong> ${this.escapeHtml(suggestion)}`;
+                html += '</div>';
+            });
+        }
+
+        // Security issues
+        if (validation.security_issues && validation.security_issues.length > 0) {
+            validation.security_issues.forEach(issue => {
+                html += '<div class="validation-item validation-error">';
+                html += '<i class="fas fa-shield-alt me-2"></i>';
+                html += `<strong>Security Issue:</strong> ${this.escapeHtml(issue)}`;
+                html += '</div>';
+            });
+        }
+
+        if (html) {
+            validationContent.innerHTML = html;
+            validationResults.classList.remove('d-none');
+        } else {
+            validationResults.classList.add('d-none');
+        }
+    }
+
+    async loadSchemaDetails(schemaName) {
+        try {
+            const response = await fetch(`/schema/${encodeURIComponent(schemaName)}`);
+            const result = await response.json();
+
+            if (result.success && result.schema) {
+                this.displaySchemaInfo(result.schema);
+            } else {
+                console.error('Failed to load schema details:', result.error);
+            }
+        } catch (error) {
+            console.error('Error loading schema details:', error);
+        }
+    }
+
+    displaySchemaInfo(schema) {
+        const schemaInfo = document.getElementById('schemaInfo');
+        const schemaDetails = document.getElementById('schemaDetails');
+
+        if (!schemaInfo || !schemaDetails) return;
+
+        let html = '';
+
+        if (schema.tables && Object.keys(schema.tables).length > 0) {
+            html += `<h6 class="mb-3">Schema: ${this.escapeHtml(schema.schema_name)}</h6>`;
+            
+            Object.entries(schema.tables).forEach(([tableName, tableInfo]) => {
+                html += '<div class="schema-table-card">';
+                html += `<div class="schema-table-header">`;
+                html += `<i class="fas fa-table me-2"></i>${this.escapeHtml(tableName)}`;
+                html += '</div>';
+                
+                if (tableInfo.columns && tableInfo.columns.length > 0) {
+                    tableInfo.columns.forEach(column => {
+                        html += '<div class="schema-column">';
+                        html += `<span class="column-name">`;
+                        
+                        // Add icons for special column types
+                        if (tableInfo.primary_keys && tableInfo.primary_keys.includes(column.name)) {
+                            html += '<i class="fas fa-key text-warning me-1" title="Primary Key"></i>';
+                        }
+                        
+                        const fk = tableInfo.foreign_keys && tableInfo.foreign_keys.find(fk => fk.column === column.name);
+                        if (fk) {
+                            html += '<i class="fas fa-link text-info me-1" title="Foreign Key"></i>';
+                        }
+                        
+                        html += this.escapeHtml(column.name);
+                        html += '</span>';
+                        html += `<span class="column-type">${this.escapeHtml(column.type)}</span>`;
+                        html += '</div>';
+                    });
+                }
+                
+                html += '</div>';
+            });
+        } else {
+            html = '<p class="text-muted">No schema information available for this database.</p>';
+        }
+
+        schemaDetails.innerHTML = html;
+        schemaInfo.style.display = 'block';
+    }
+
+    hideSchemaInfo() {
+        const schemaInfo = document.getElementById('schemaInfo');
+        if (schemaInfo) {
+            schemaInfo.style.display = 'none';
+        }
+    }
+
+    showLoading(show) {
+        if (show) {
+            this.loadingModal.show();
+        } else {
+            this.loadingModal.hide();
+        }
+    }
+
+    showSuccess(message) {
+        this.showToast(message, 'success');
+    }
+
+    showError(message) {
+        const errorState = document.getElementById('errorState');
+        const errorMessage = document.getElementById('errorMessage');
+        const sqlOutput = document.getElementById('sqlOutput');
+        
+        if (errorState && errorMessage) {
+            errorMessage.textContent = message;
+            errorState.classList.remove('d-none');
+            
+            if (sqlOutput) {
+                sqlOutput.classList.add('d-none');
+            }
+        }
+        
+        this.showToast(message, 'error');
+    }
+
+    showToast(message, type) {
+        // Create toast element
+        const toastContainer = this.getToastContainer();
+        const toastId = 'toast-' + Date.now();
+        
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-bg-${type === 'error' ? 'danger' : 'success'} border-0" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'} me-2"></i>
+                        ${this.escapeHtml(message)}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+
+    getToastContainer() {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1055';
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+}
+
+// Global functions for button actions
+async function copyToClipboard() {
+    const sqlCode = document.getElementById('sqlCode');
+    if (!sqlCode || !sqlCode.textContent) {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(sqlCode.textContent);
+        
+        // Visual feedback
+        const copyBtn = event.target.closest('button');
+        if (copyBtn) {
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+            copyBtn.classList.add('copy-success');
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.classList.remove('copy-success');
+            }, 2000);
+        }
+        
+        // Show toast
+        window.sqlConverter.showSuccess('SQL query copied to clipboard!');
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+        window.sqlConverter.showError('Failed to copy to clipboard');
+    }
+}
+
+async function validateSQL() {
+    const sqlCode = document.getElementById('sqlCode');
+    if (!sqlCode || !sqlCode.textContent) {
+        window.sqlConverter.showError('No SQL query to validate');
+        return;
+    }
+
+    try {
+        const response = await fetch('/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                sql: sqlCode.textContent
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.sqlConverter.displayValidationResults(result.validation);
+            window.sqlConverter.showSuccess('SQL validation completed');
+        } else {
+            window.sqlConverter.showError(result.error || 'Validation failed');
+        }
+    } catch (error) {
+        console.error('Error validating SQL:', error);
+        window.sqlConverter.showError('Network error during validation');
+    }
+}
+
+async function showHistory() {
+    const modal = document.getElementById('historyModal');
+    const historyContent = document.getElementById('historyContent');
+    
+    if (!modal || !historyContent) return;
+
+    // Show loading state
+    historyContent.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading query history...</p>
+        </div>
+    `;
+
+    // Show modal
+    const historyModal = new bootstrap.Modal(modal);
+    historyModal.show();
+
+    try {
+        const response = await fetch('/history');
+        const result = await response.json();
+
+        if (result.success && result.history) {
+            displayHistoryContent(result.history);
+        } else {
+            historyContent.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                    <h6 class="mt-3">Failed to load history</h6>
+                    <p class="text-muted">Could not retrieve query history</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+        historyContent.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                <h6 class="mt-3">Error loading history</h6>
+                <p class="text-muted">Network error occurred</p>
+            </div>
+        `;
+    }
+}
+
+function showSchemaUpload() {
+    const modal = document.getElementById('schemaUploadModal');
+    if (!modal) return;
+    
+    const schemaUploadModal = new bootstrap.Modal(modal);
+    schemaUploadModal.show();
+    
+    // Add form submission handler
+    const form = document.getElementById('schemaUploadForm');
+    if (form) {
+        form.onsubmit = handleSchemaUpload;
+    }
+}
+
+async function handleSchemaUpload(event) {
+    event.preventDefault();
+    
+    const schemaName = document.getElementById('schemaName').value.trim();
+    const schemaJson = document.getElementById('schemaJson').value.trim();
+    
+    if (!schemaName || !schemaJson) {
+        window.sqlConverter.showError('Please provide both schema name and JSON definition');
+        return;
+    }
+    
+    try {
+        const tables = JSON.parse(schemaJson);
+        
+        const response = await fetch('/upload-schema', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                schema_name: schemaName,
+                tables: tables
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.sqlConverter.showSuccess(`Schema "${schemaName}" uploaded successfully!`);
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('schemaUploadModal'));
+            if (modal) modal.hide();
+            
+            // Clear form
+            document.getElementById('schemaUploadForm').reset();
+            
+            // Refresh schema dropdown
+            location.reload();
+        } else {
+            window.sqlConverter.showError(result.error || 'Failed to upload schema');
+        }
+    } catch (error) {
+        if (error instanceof SyntaxError) {
+            window.sqlConverter.showError('Invalid JSON format. Please check your schema definition.');
+        } else {
+            console.error('Error uploading schema:', error);
+            window.sqlConverter.showError('Network error occurred while uploading schema');
+        }
+    }
+}
+
+function showSchemaAnalyzer() {
+    const modal = document.getElementById('schemaAnalyzerModal');
+    if (!modal) return;
+    
+    const schemaAnalyzerModal = new bootstrap.Modal(modal);
+    schemaAnalyzerModal.show();
+    
+    // Add form submission handler
+    const form = document.getElementById('schemaAnalyzerForm');
+    if (form) {
+        form.onsubmit = handleSchemaAnalysis;
+    }
+}
+
+async function handleSchemaAnalysis(event) {
+    event.preventDefault();
+    
+    const dbType = document.getElementById('dbType').value;
+    const dbHost = document.getElementById('dbHost').value.trim();
+    const dbPort = document.getElementById('dbPort').value.trim();
+    const dbDatabase = document.getElementById('dbDatabase').value.trim();
+    const dbUsername = document.getElementById('dbUsername').value.trim();
+    const dbPassword = document.getElementById('dbPassword').value.trim();
+    
+    if (!dbType || !dbHost || !dbDatabase || !dbUsername || !dbPassword) {
+        window.sqlConverter.showError('Please fill in all required database connection fields');
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('analysisResults');
+    
+    // Show loading state
+    resultsDiv.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Analyzing...</span>
+            </div>
+            <h6 class="mt-3">AI Analyzing Your Database</h6>
+            <p class="text-muted">This may take a few minutes for large databases...</p>
+            <small class="text-muted">
+                • Connecting to database<br>
+                • Extracting schema information<br>
+                • Analyzing table patterns<br>
+                • Generating AI descriptions
+            </small>
+        </div>
+    `;
+    
+    try {
+        const connectionInfo = {
+            database_type: dbType,
+            host: dbHost,
+            port: dbPort || (dbType === 'postgresql' ? 5432 : 1433),
+            database: dbDatabase,
+            username: dbUsername,
+            password: dbPassword
+        };
+        
+        const response = await fetch('/analyze-schema', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                connection_info: connectionInfo
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayAnalysisResults(result.analysis, result.suggested_descriptions);
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x mb-3"></i>
+                    <h6>Analysis Failed</h6>
+                    <p class="text-danger">${result.error}</p>
+                    <small class="text-muted">
+                        Please check your database connection details and try again.
+                    </small>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error analyzing schema:', error);
+        resultsDiv.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle text-warning fa-2x mb-3"></i>
+                <h6>Network Error</h6>
+                <p class="text-danger">Failed to connect to analysis service</p>
+                <small class="text-muted">Please check your network connection and try again.</small>
+            </div>
+        `;
+    }
+}
+
+function displayAnalysisResults(analysis, descriptions) {
+    const resultsDiv = document.getElementById('analysisResults');
+    
+    let html = `
+        <div class="analysis-results">
+            <div class="mb-4">
+                <h6 class="text-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Analysis Complete
+                </h6>
+                <p class="text-muted mb-3">AI has analyzed your database and generated descriptions for cryptic table names.</p>
+            </div>
+    `;
+    
+    // Show naming patterns discovered
+    if (analysis.naming_conventions) {
+        html += `
+            <div class="mb-4">
+                <h6><i class="fas fa-pattern me-2"></i>Naming Patterns Discovered</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">Common Prefixes:</small>
+                        <div class="badge bg-secondary me-1 mb-1">${analysis.naming_conventions.common_prefixes.join('</div><div class="badge bg-secondary me-1 mb-1">')}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Common Suffixes:</small>
+                        <div class="badge bg-secondary me-1 mb-1">${analysis.naming_conventions.common_suffixes.join('</div><div class="badge bg-secondary me-1 mb-1">')}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Show table analysis results
+    html += `<div class="mb-4">
+        <h6><i class="fas fa-table me-2"></i>Table Analysis Results</h6>
+        <div class="accordion" id="tableAnalysisAccordion">
+    `;
+    
+    let tableIndex = 0;
+    for (const [tableName, tableDesc] of Object.entries(descriptions.tables)) {
+        const confidence = Math.round(tableDesc.confidence * 100);
+        const confidenceColor = confidence > 70 ? 'success' : confidence > 40 ? 'warning' : 'danger';
+        
+        html += `
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table${tableIndex}">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <span>
+                                <code class="text-primary">${tableName}</code>
+                                <span class="badge bg-${confidenceColor} ms-2">${confidence}% confidence</span>
+                            </span>
+                            <small class="text-muted me-3">${tableDesc.purpose}</small>
+                        </div>
+                    </button>
+                </h2>
+                <div id="table${tableIndex}" class="accordion-collapse collapse" data-bs-parent="#tableAnalysisAccordion">
+                    <div class="accordion-body">
+                        <p><strong>AI Description:</strong> ${tableDesc.description}</p>
+                        ${tableDesc.evidence.length > 0 ? `
+                            <p><strong>Evidence:</strong></p>
+                            <ul class="small">
+                                ${tableDesc.evidence.map(ev => `<li>${ev}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                        
+                        <div class="mt-3">
+                            <h6>Column Descriptions:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>AI Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(descriptions.columns[tableName] || {}).map(([colName, colDesc]) => `
+                                            <tr>
+                                                <td><code>${colName}</code></td>
+                                                <td>${colDesc}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        tableIndex++;
+    }
+    
+    html += `
+        </div>
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button class="btn btn-success" onclick="exportAnalysisToSchema()">
+            <i class="fas fa-download me-2"></i>
+            Export as Schema JSON
+        </button>
+        <button class="btn btn-primary" onclick="useAnalysisAsSchema()">
+            <i class="fas fa-check me-2"></i>
+            Use This Analysis as Schema
+        </button>
+    </div>
+    </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+}
+
+function exportAnalysisToSchema() {
+    window.sqlConverter.showSuccess('Analysis export feature coming soon!');
+}
+
+function useAnalysisAsSchema() {
+    window.sqlConverter.showSuccess('Schema import from analysis feature coming soon!');
+}
+
+async function showHistory() {
+    const modal = document.getElementById('historyModal');
+    const historyContent = document.getElementById('historyContent');
+    
+    if (!modal || !historyContent) return;
+
+    // Show loading state
+    historyContent.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading query history...</p>
+        </div>
+    `;
+
+    // Show modal
+    const historyModal = new bootstrap.Modal(modal);
+    historyModal.show();
+
+    try {
+        const response = await fetch('/history');
+        const result = await response.json();
+
+        if (result.success && result.history) {
+            displayHistoryContent(result.history);
+        } else {
+            historyContent.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                    <h6 class="mt-3">Failed to load history</h6>
+                    <p class="text-muted">${result.error || 'Unknown error occurred'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+        historyContent.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-wifi text-danger" style="font-size: 2rem;"></i>
+                <h6 class="mt-3">Network Error</h6>
+                <p class="text-muted">Could not connect to the server</p>
+            </div>
+        `;
+    }
+}
+
+function displayHistoryContent(history) {
+    const historyContent = document.getElementById('historyContent');
+    
+    if (!history || history.length === 0) {
+        historyContent.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-history text-muted" style="font-size: 2rem;"></i>
+                <h6 class="mt-3">No query history</h6>
+                <p class="text-muted">Your generated queries will appear here</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    history.forEach((item, index) => {
+        const date = new Date(item.created_at).toLocaleString();
+        const isValid = item.is_valid ? 'success' : 'danger';
+        const validIcon = item.is_valid ? 'check-circle' : 'exclamation-circle';
+        
+        html += `
+            <div class="history-item" onclick="loadHistoryItem(${index})" data-history='${JSON.stringify(item)}'>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-1">${window.sqlConverter.escapeHtml(item.natural_language.substring(0, 100))}${item.natural_language.length > 100 ? '...' : ''}</h6>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-${isValid} me-2">
+                            <i class="fas fa-${validIcon} me-1"></i>
+                            ${item.is_valid ? 'Valid' : 'Invalid'}
+                        </span>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                </div>
+                <div class="history-query">
+                    <code class="language-sql">${window.sqlConverter.escapeHtml(item.optimized_sql || item.generated_sql)}</code>
+                </div>
+            </div>
+        `;
+    });
+
+    historyContent.innerHTML = html;
+    
+    // Re-highlight syntax for history items
+    if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+    }
+}
+
+function loadHistoryItem(index) {
+    const historyItems = document.querySelectorAll('.history-item');
+    if (historyItems[index]) {
+        const historyData = JSON.parse(historyItems[index].dataset.history);
+        
+        // Load the query into the main interface
+        const textarea = document.getElementById('naturalLanguageInput');
+        const sqlCode = document.getElementById('sqlCode');
+        
+        if (textarea) {
+            textarea.value = historyData.natural_language;
+        }
+        
+        if (sqlCode) {
+            sqlCode.textContent = historyData.optimized_sql || historyData.generated_sql;
+            
+            // Show the SQL output section
+            const sqlOutput = document.getElementById('sqlOutput');
+            const emptyState = document.getElementById('emptyState');
+            const outputActions = document.getElementById('outputActions');
+            
+            if (sqlOutput && emptyState && outputActions) {
+                emptyState.classList.add('d-none');
+                sqlOutput.classList.remove('d-none');
+                outputActions.classList.remove('d-none');
+            }
+            
+            // Re-highlight syntax
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightElement(sqlCode);
+            }
+        }
+        
+        // Close the history modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('historyModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        window.sqlConverter.showSuccess('Query loaded from history');
+    }
+}
+
+async function loadSchemaDetails(schemaName) {
+    if (window.sqlConverter) {
+        await window.sqlConverter.loadSchemaDetails(schemaName);
+    }
+}
+
+// Database Selection Functions
+let selectedDatabase = null;
+let availableDatabases = [];
+
+async function loadAvailableDatabases() {
+    try {
+        const response = await fetch('/api/databases');
+        const result = await response.json();
+        
+        const databaseSelect = document.getElementById('databaseSelect');
+        
+        if (result.success && result.databases) {
+            availableDatabases = result.databases;
+            
+            // Clear existing options
+            databaseSelect.innerHTML = '<option value="">Select a database...</option>';
+            
+            // Add database options
+            result.databases.forEach(db => {
+                const option = document.createElement('option');
+                option.value = db.name;
+                option.textContent = `${db.name} - ${db.description}`;
+                databaseSelect.appendChild(option);
+            });
+            
+            // Enable database selection
+            databaseSelect.disabled = false;
+            
+        } else {
+            databaseSelect.innerHTML = '<option value="">Failed to load databases</option>';
+            window.sqlConverter.showError(result.error || 'Failed to load databases');
+        }
+    } catch (error) {
+        console.error('Error loading databases:', error);
+        const databaseSelect = document.getElementById('databaseSelect');
+        databaseSelect.innerHTML = '<option value="">Error loading databases</option>';
+        window.sqlConverter.showError('Network error while loading databases');
+    }
+}
+
+function handleDatabaseSelection() {
+    const databaseSelect = document.getElementById('databaseSelect');
+    const selectedDbName = databaseSelect.value;
+    
+    if (selectedDbName) {
+        selectedDatabase = availableDatabases.find(db => db.name === selectedDbName);
+        
+        // Update selected database details
+        const detailsDiv = document.getElementById('selectedDatabaseDetails');
+        detailsDiv.innerHTML = `
+            <div class="small">
+                <strong>Name:</strong> ${selectedDatabase.name}<br>
+                <strong>Description:</strong> ${selectedDatabase.description}<br>
+                <strong>Environment:</strong> ${selectedDatabase.environment || 'Production'}
+            </div>
+        `;
+        
+        // Enable test button
+        document.getElementById('testDbBtn').disabled = false;
+        
+        // Reset status
+        const statusDiv = document.getElementById('databaseStatus');
+        statusDiv.innerHTML = '<span class="badge bg-secondary">Selected</span>';
+        
+    } else {
+        selectedDatabase = null;
+        document.getElementById('testDbBtn').disabled = true;
+        document.getElementById('connectDbBtn').disabled = true;
+        
+        const detailsDiv = document.getElementById('selectedDatabaseDetails');
+        detailsDiv.innerHTML = '<p class="text-muted small">Select a database to view details</p>';
+        
+        const statusDiv = document.getElementById('databaseStatus');
+        statusDiv.innerHTML = '<span class="badge bg-secondary">No Database Selected</span>';
+    }
+}
+
+async function testSelectedDatabase() {
+    if (!selectedDatabase) {
+        window.sqlConverter.showError('Please select a database first');
+        return;
+    }
+    
+    const statusDiv = document.getElementById('databaseStatus');
+    statusDiv.innerHTML = '<span class="badge bg-warning">Testing...</span>';
+    
+    try {
+        const response = await fetch(`/api/databases/${selectedDatabase.name}/test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            statusDiv.innerHTML = '<span class="badge bg-success">Connected</span>';
+            
+            // Show connection info
+            const connectionInfoDiv = document.getElementById('databaseConnectionInfo');
+            connectionInfoDiv.innerHTML = `
+                <div class="small">
+                    <strong>Server:</strong> ${result.server_info?.server_name || 'Connected'}<br>
+                    <strong>Version:</strong> ${result.server_info?.version || 'Unknown'}
+                </div>
+            `;
+            
+            // Enable connect button
+            document.getElementById('connectDbBtn').disabled = false;
+            
+            window.sqlConverter.showSuccess('Database connection test successful!');
+        } else {
+            statusDiv.innerHTML = '<span class="badge bg-danger">Failed</span>';
+            document.getElementById('connectDbBtn').disabled = true;
+            
+            const connectionInfoDiv = document.getElementById('databaseConnectionInfo');
+            connectionInfoDiv.innerHTML = '<p class="text-muted small">Connection test failed</p>';
+            
+            window.sqlConverter.showError(result.error || 'Connection test failed');
+        }
+    } catch (error) {
+        console.error('Error testing database connection:', error);
+        statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
+        window.sqlConverter.showError('Network error during connection test');
+    }
+}
+
+async function connectToSelectedDatabase() {
+    if (!selectedDatabase) {
+        window.sqlConverter.showError('Please select a database first');
+        return;
+    }
+    
+    const statusDiv = document.getElementById('databaseStatus');
+    statusDiv.innerHTML = '<span class="badge bg-warning">Connecting...</span>';
+    
+    try {
+        // Load schema for the selected database
+        const response = await fetch(`/api/databases/${selectedDatabase.name}/schema`);
+        const result = await response.json();
+        
+        if (result.success) {
+            statusDiv.innerHTML = '<span class="badge bg-success">Connected & Schema Loaded</span>';
+            
+            // Update schema dropdown in main form
+            const schemaSelect = document.getElementById('schemaSelect');
+            
+            // Remove any existing database schema options
+            const existingOptions = schemaSelect.querySelectorAll('option[value^="database:"]');
+            existingOptions.forEach(option => option.remove());
+            
+            // Add the new database schema option
+            const option = document.createElement('option');
+            option.value = `database:${selectedDatabase.name}`;
+            option.textContent = `${selectedDatabase.name} (${result.table_count || 0} tables)`;
+            schemaSelect.appendChild(option);
+            
+            // Automatically select the new schema
+            schemaSelect.value = `database:${selectedDatabase.name}`;
+            
+            // Trigger schema change event
+            const event = new Event('change');
+            schemaSelect.dispatchEvent(event);
+            
+            window.sqlConverter.showSuccess(`Connected to ${selectedDatabase.name} and loaded schema with ${result.table_count || 0} tables`);
+        } else {
+            statusDiv.innerHTML = '<span class="badge bg-danger">Failed</span>';
+            window.sqlConverter.showError(result.error || 'Failed to load database schema');
+        }
+    } catch (error) {
+        console.error('Error connecting to database:', error);
+        statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
+        window.sqlConverter.showError('Network error while connecting to database');
+    }
+}
+
+function getSQLServerConnectionParams() {
+    const authMethod = document.getElementById('sqlServerAuth').value;
+    
+    const params = {
+        server: document.getElementById('sqlServerHost').value.trim(),
+        port: document.getElementById('sqlServerPort').value.trim() || '1433',
+        database: document.getElementById('sqlServerDatabase').value.trim() || 'master',
+        auth_method: authMethod,
+        timeout: document.getElementById('sqlServerTimeout').value.trim() || '30',
+        encrypt: document.getElementById('sqlServerEncrypt').checked ? 'yes' : 'no',
+        trust_server_certificate: document.getElementById('sqlServerTrustCert').checked ? 'yes' : 'no'
+    };
+    
+    if (authMethod === 'sql') {
+        params.username = document.getElementById('sqlServerUsername').value.trim();
+        params.password = document.getElementById('sqlServerPassword').value.trim();
+    }
+    
+    return params;
+}
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    window.sqlConverter = new SQLConverter();
+    
+    // Load available databases on page load
+    loadAvailableDatabases();
+    
+    // Handle database selection changes
+    const databaseSelect = document.getElementById('databaseSelect');
+    if (databaseSelect) {
+        databaseSelect.addEventListener('change', handleDatabaseSelection);
+    }
+});
