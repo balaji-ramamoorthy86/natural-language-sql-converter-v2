@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Natural Language to SQL Converter{% endblock %}</title>
+    
+    <!-- Bootstrap CSS (Replit dark theme) -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Prism.js for SQL syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-database me-2"></i>
+                NL to SQL Converter
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i>
+                            Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showHistory()">
+                            <i class="fas fa-history me-1"></i>
+                            History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSchemaUpload()">
+                            <i class="fas fa-upload me-1"></i>
+                            Upload Schema
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSchemaAnalyzer()">
+                            <i class="fas fa-robot me-1"></i>
+                            AI Analyzer
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="flex-grow-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Natural Language to SQL Converter</h6>
+                    <p class="text-muted small">
+                        Powered by Azure OpenAI Services for intelligent SQL query generation
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="text-muted small">
+                        Built with Flask, Bootstrap, and Azure AI
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h6>Generating SQL Query...</h6>
+                    <p class="text-muted mb-0">This may take a few moments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history me-2"></i>
+                        Query History
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="historyContent">
+                        <div class="text-center py-4">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schema Upload Modal -->
+    <div class="modal fade" id="schemaUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-upload me-2"></i>
+                        Upload Database Schema
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="schemaUploadForm">
+                        <div class="mb-3">
+                            <label for="schemaName" class="form-label">Schema Name</label>
+                            <input type="text" class="form-control" id="schemaName" placeholder="e.g., my_database" required>
+                            <div class="form-text">Enter a name for your database schema</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="schemaJson" class="form-label">Schema Definition (JSON)</label>
+                            <textarea class="form-control" id="schemaJson" rows="15" placeholder='Example:
+{
+  "users": {
+    "columns": [
+      {"name": "id", "type": "int", "nullable": false, "is_primary_key": true},
+      {"name": "name", "type": "varchar(100)", "nullable": false},
+      {"name": "email", "type": "varchar(255)", "nullable": false}
+    ]
+  },
+  "orders": {
+    "columns": [
+      {"name": "id", "type": "int", "nullable": false, "is_primary_key": true},
+      {"name": "user_id", "type": "int", "nullable": false, "is_foreign_key": true, "referenced_table": "users", "referenced_column": "id"},
+      {"name": "total", "type": "decimal(10,2)", "nullable": false}
+    ]
+  }
+}' required></textarea>
+                            <div class="form-text">Paste your database schema in JSON format</div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-2"></i>
+                                Upload Schema
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Schema Analyzer Modal -->
+    <div class="modal fade" id="schemaAnalyzerModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-robot me-2"></i>
+                        AI Schema Analyzer
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Connect to Your Database</h6>
+                            <form id="schemaAnalyzerForm">
+                                <div class="mb-3">
+                                    <label for="dbType" class="form-label">Database Type</label>
+                                    <select class="form-select" id="dbType" required>
+                                        <option value="">Select database type</option>
+                                        <option value="postgresql">PostgreSQL</option>
+                                        <option value="sqlserver">SQL Server</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dbHost" class="form-label">Host</label>
+                                    <input type="text" class="form-control" id="dbHost" placeholder="localhost" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dbPort" class="form-label">Port</label>
+                                    <input type="number" class="form-control" id="dbPort" placeholder="5432">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dbDatabase" class="form-label">Database</label>
+                                    <input type="text" class="form-control" id="dbDatabase" placeholder="database_name" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dbUsername" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="dbUsername" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dbPassword" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="dbPassword" required>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-2"></i>
+                                        Analyze Database
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>AI Analysis Results</h6>
+                            <div id="analysisResults" class="border rounded p-3 bg-light" style="min-height: 400px;">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                    <p>Connect to your database to see AI-generated descriptions for your tables with cryptic names.</p>
+                                    <small>The AI will analyze your database structure, identify patterns, and generate meaningful descriptions automatically.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
