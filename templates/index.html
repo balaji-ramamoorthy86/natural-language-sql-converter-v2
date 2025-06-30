@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="display-4 mb-3">
+                    <i class="fas fa-magic text-primary me-3"></i>
+                    Natural Language to SQL
+                </h1>
+                <p class="lead text-muted">
+                    Convert your natural language descriptions into optimized SQL Server queries using Azure OpenAI
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Converter Interface -->
+    <div class="row">
+        <!-- Input Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-comment-dots me-2"></i>
+                        Natural Language Input
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="sqlConverterForm">
+                        <!-- Schema Selection -->
+                        <div class="mb-3">
+                            <label for="schemaSelect" class="form-label">
+                                <i class="fas fa-database me-1"></i>
+                                Database Schema Context
+                            </label>
+                            <select class="form-select" id="schemaSelect" name="schema_context">
+                                <option value="">Select a schema (optional)</option>
+                                {% for schema in schemas %}
+                                <option value="{{ schema }}">{{ schema }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Selecting a schema provides better context for query generation
+                            </div>
+                        </div>
+
+                        <!-- Natural Language Input -->
+                        <div class="mb-3">
+                            <label for="naturalLanguageInput" class="form-label">
+                                Describe your query in plain English
+                            </label>
+                            <div class="alert alert-info py-2 mb-2">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <small><strong>Security:</strong> Only SELECT queries are allowed. Data modification operations are prohibited.</small>
+                            </div>
+                            <textarea 
+                                class="form-control" 
+                                id="naturalLanguageInput" 
+                                name="natural_language" 
+                                rows="6" 
+                                placeholder="Example: Find all users who have placed orders in the last 30 days and show their total order value"
+                                required></textarea>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-cogs me-2"></i>
+                                Generate SQL Query
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Example Queries -->
+                    <div class="mt-4">
+                        <h6 class="text-muted">Example Queries:</h6>
+                        <div class="list-group list-group-flush">
+                            <button type="button" class="list-group-item list-group-item-action example-query" 
+                                    data-query="Show all customers who have spent more than $1000 in total">
+                                <small>Show all customers who have spent more than $1000 in total</small>
+                            </button>
+                            <button type="button" class="list-group-item list-group-item-action example-query" 
+                                    data-query="Find the top 10 best-selling products by quantity">
+                                <small>Find the top 10 best-selling products by quantity</small>
+                            </button>
+                            <button type="button" class="list-group-item list-group-item-action example-query" 
+                                    data-query="Get monthly sales report for the current year">
+                                <small>Get monthly sales report for the current year</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-code me-2"></i>
+                        Generated SQL Query
+                    </h5>
+                    <div id="outputActions" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-light me-2" onclick="copyToClipboard()">
+                            <i class="fas fa-copy me-1"></i>
+                            Copy
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="validateSQL()">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Validate
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- SQL Output -->
+                    <div id="sqlOutput" class="d-none">
+                        <pre><code id="sqlCode" class="language-sql"></code></pre>
+                        
+                        <!-- Explanation -->
+                        <div id="explanationSection" class="mt-3">
+                            <h6 class="text-muted">Explanation:</h6>
+                            <div id="explanationText" class="border rounded p-3 bg-dark"></div>
+                        </div>
+
+                        <!-- Validation Results -->
+                        <div id="validationResults" class="mt-3 d-none">
+                            <h6 class="text-muted">Validation Results:</h6>
+                            <div id="validationContent"></div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="text-center py-5">
+                        <i class="fas fa-code text-muted" style="font-size: 3rem;"></i>
+                        <h6 class="text-muted mt-3">No SQL query generated yet</h6>
+                        <p class="text-muted small">Enter a natural language description and click "Generate SQL Query" to get started</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="errorState" class="d-none">
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="errorMessage"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Selection Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        Database Selection
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Select a database to load its schema for SQL query generation. Connection details are automatically retrieved from the configuration API.
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="mb-3">
+                                <label for="databaseSelect" class="form-label">Available Databases</label>
+                                <select class="form-select" id="databaseSelect">
+                                    <option value="">Loading databases...</option>
+                                </select>
+                                <div class="form-text">Database connection strings are managed through the configuration API.</div>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-primary" onclick="testSelectedDatabase()" disabled id="testDbBtn">
+                                    <i class="fas fa-plug me-1"></i>
+                                    Test Connection
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="connectToSelectedDatabase()" disabled id="connectDbBtn">
+                                    <i class="fas fa-link me-1"></i>
+                                    Connect & Load Schema
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Connection Status</h6>
+                                    <div id="databaseStatus">
+                                        <span class="badge bg-secondary">No Database Selected</span>
+                                    </div>
+                                    
+                                    <hr>
+                                    
+                                    <h6 class="card-title">Selected Database</h6>
+                                    <div id="selectedDatabaseDetails">
+                                        <p class="text-muted small">Select a database to view details</p>
+                                    </div>
+                                    
+                                    <hr>
+                                    
+                                    <h6 class="card-title">Connection Information</h6>
+                                    <div id="databaseConnectionInfo">
+                                        <p class="text-muted small">Connection details will appear after testing</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="text-center mb-4">Key Features</h3>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-brain text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">AI-Powered</h5>
+                    <p class="card-text text-muted">
+                        Leverages Azure OpenAI for intelligent query generation from natural language
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-shield-alt text-success" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">SQL Validation</h5>
+                    <p class="card-text text-muted">
+                        Validates generated queries for syntax errors and security vulnerabilities
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-tachometer-alt text-warning" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Optimization</h5>
+                    <p class="card-text text-muted">
+                        Provides performance suggestions and query optimization recommendations
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-server text-info" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">SQL Server Support</h5>
+                    <p class="card-text text-muted">
+                        Direct connection to on-premises SQL Server instances with full schema discovery
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schema Information -->
+    <div class="row mt-5" id="schemaInfo" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Schema Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="schemaDetails"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle example query clicks
+    document.querySelectorAll('.example-query').forEach(button => {
+        button.addEventListener('click', function() {
+            const query = this.dataset.query;
+            document.getElementById('naturalLanguageInput').value = query;
+        });
+    });
+
+    // Handle schema selection change
+    document.getElementById('schemaSelect').addEventListener('change', function() {
+        const selectedSchema = this.value;
+        if (selectedSchema) {
+            loadSchemaDetails(selectedSchema);
+        } else {
+            document.getElementById('schemaInfo').style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}
