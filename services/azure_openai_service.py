@@ -232,10 +232,28 @@ class AzureOpenAIService:
                 sql = "SELECT [ColumnNames] FROM [TableName] WHERE [Condition];"
                 explanation = "SELECT query template. Please replace placeholders with actual table and column names."
         
-        elif 'insert' in nl_lower or 'add' in nl_lower or 'update' in nl_lower or 'modify' in nl_lower or 'change' in nl_lower or 'delete' in nl_lower or 'remove' in nl_lower or 'drop' in nl_lower or 'create' in nl_lower or 'truncate' in nl_lower or 'alter' in nl_lower or 'grant' in nl_lower or 'revoke' in nl_lower or 'exec' in nl_lower or 'execute' in nl_lower or 'merge' in nl_lower or 'upsert' in nl_lower:
+        # Comprehensive list of dangerous SQL operations and database administration commands
+        dangerous_operations = [
+            # DML operations
+            'insert', 'update', 'delete', 'merge', 'upsert', 'truncate',
+            # DDL operations  
+            'create', 'drop', 'alter', 'rename', 'comment',
+            # Data loading operations
+            'bulk', 'load', 'import', 'copy', 'restore',
+            # Administrative operations
+            'grant', 'revoke', 'exec', 'execute', 'call', 'backup',
+            # Index/maintenance operations
+            'reindex', 'rebuild', 'analyze', 'optimize', 'vacuum', 'shrink', 'checkpoint',
+            # Lock/constraint operations
+            'lock', 'unlock', 'disable', 'enable',
+            # Action words that imply modification
+            'add', 'modify', 'change', 'remove', 'raise'
+        ]
+        
+        if any(op in nl_lower for op in dangerous_operations):
             return {
                 'success': False,
-                'error': 'Only SELECT queries are allowed. Data modification and administrative operations (INSERT, UPDATE, DELETE, DROP, CREATE, TRUNCATE, ALTER, MERGE, UPSERT, GRANT, REVOKE, EXEC) are prohibited for security.',
+                'error': 'Only SELECT queries are allowed. All data modification, administrative, and maintenance operations are prohibited for security. This includes: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE, MERGE, UPSERT, BULK operations, data loading, backup/restore, index maintenance, and privilege management.',
                 'fallback': True
             }
         
