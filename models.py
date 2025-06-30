@@ -23,7 +23,7 @@ class DatabaseSchema(db.Model):
     __tablename__ = 'database_schemas'
     
     id = db.Column(db.Integer, primary_key=True)
-    schema_name = db.Column(db.String(255), nullable=False, unique=True)
+    schema_name = db.Column(db.String(255), nullable=False)
     table_name = db.Column(db.String(255), nullable=False)
     column_name = db.Column(db.String(255), nullable=False)
     data_type = db.Column(db.String(100))
@@ -35,6 +35,11 @@ class DatabaseSchema(db.Model):
     column_description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Composite unique constraint to prevent duplicate schema+table+column combinations
+    __table_args__ = (
+        db.UniqueConstraint('schema_name', 'table_name', 'column_name', name='uq_schema_table_column'),
+    )
     
     def __repr__(self):
         return f'<DatabaseSchema {self.schema_name}.{self.table_name}.{self.column_name}>'
