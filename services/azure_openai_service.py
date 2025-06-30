@@ -232,10 +232,10 @@ class AzureOpenAIService:
                 sql = "SELECT [ColumnNames] FROM [TableName] WHERE [Condition];"
                 explanation = "SELECT query template. Please replace placeholders with actual table and column names."
         
-        elif 'insert' in nl_lower or 'add' in nl_lower or 'update' in nl_lower or 'modify' in nl_lower or 'change' in nl_lower or 'delete' in nl_lower or 'remove' in nl_lower or 'drop' in nl_lower or 'create' in nl_lower or 'truncate' in nl_lower or 'alter' in nl_lower or 'grant' in nl_lower or 'revoke' in nl_lower or 'exec' in nl_lower or 'execute' in nl_lower:
+        elif 'insert' in nl_lower or 'add' in nl_lower or 'update' in nl_lower or 'modify' in nl_lower or 'change' in nl_lower or 'delete' in nl_lower or 'remove' in nl_lower or 'drop' in nl_lower or 'create' in nl_lower or 'truncate' in nl_lower or 'alter' in nl_lower or 'grant' in nl_lower or 'revoke' in nl_lower or 'exec' in nl_lower or 'execute' in nl_lower or 'merge' in nl_lower:
             return {
                 'success': False,
-                'error': 'Only SELECT queries are allowed. Data modification and administrative operations (INSERT, UPDATE, DELETE, DROP, CREATE, TRUNCATE, ALTER, GRANT, REVOKE, EXEC) are prohibited for security.',
+                'error': 'Only SELECT queries are allowed. Data modification and administrative operations (INSERT, UPDATE, DELETE, DROP, CREATE, TRUNCATE, ALTER, MERGE, GRANT, REVOKE, EXEC) are prohibited for security.',
                 'fallback': True
             }
         
