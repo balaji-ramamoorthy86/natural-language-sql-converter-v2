@@ -62,10 +62,16 @@ class SQLConverter {
                 this.displaySQLResult(result);
                 this.showSuccess('SQL query generated successfully!');
             } else {
+                // Force hide loading immediately - multiple attempts for safety
+                this.showLoading(false);
+                setTimeout(() => this.showLoading(false), 50);
+                setTimeout(() => this.showLoading(false), 200);
+                
                 this.showError(result.error || 'Failed to generate SQL query');
             }
         } catch (error) {
             console.error('Error:', error);
+            this.showLoading(false);
             this.showError('Network error occurred. Please try again.');
         } finally {
             this.showLoading(false);
@@ -273,10 +279,51 @@ class SQLConverter {
     }
 
     showLoading(show) {
-        if (show) {
-            this.loadingModal.show();
-        } else {
-            this.loadingModal.hide();
+        try {
+            if (show) {
+                this.loadingModal.show();
+                // Safety timeout to auto-hide loading after 30 seconds
+                this.loadingTimeout = setTimeout(() => {
+                    this.showLoading(false);
+                    this.showError('Request timed out. Please try again.');
+                }, 30000);
+            } else {
+                // Clear any existing timeout
+                if (this.loadingTimeout) {
+                    clearTimeout(this.loadingTimeout);
+                    this.loadingTimeout = null;
+                }
+                
+                // Multiple approaches to ensure modal is hidden
+                this.loadingModal.hide();
+                
+                // Force hide through Bootstrap's internal methods
+                const modalElement = document.getElementById('loadingModal');
+                if (modalElement) {
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    modalElement.setAttribute('aria-hidden', 'true');
+                    modalElement.removeAttribute('aria-modal');
+                }
+                
+                // Remove any stuck backdrops immediately and with delay
+                const removeBackdrops = () => {
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('padding-right');
+                };
+                
+                removeBackdrops();
+                setTimeout(removeBackdrops, 50);
+                setTimeout(removeBackdrops, 200);
+            }
+        } catch (error) {
+            console.error('Error managing loading state:', error);
+            // Emergency fallback - force remove all modal elements
+            if (!show) {
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+            }
         }
     }
 
