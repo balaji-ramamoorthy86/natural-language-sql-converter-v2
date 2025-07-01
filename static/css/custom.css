@@ -12,38 +12,59 @@ body.light-theme {
 }
 
 body.light-theme .navbar {
-    background-color: #f8f9fa !important;
+    background-color: #ffffff !important;
     border-color: #dee2e6 !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
 }
 
 body.light-theme .navbar-brand,
 body.light-theme .nav-link {
     color: #212529 !important;
+    font-weight: 500 !important;
+}
+
+body.light-theme .nav-link:hover {
+    color: #0d6efd !important;
 }
 
 body.light-theme .btn-outline-light {
-    color: #6c757d !important;
+    color: #495057 !important;
     border-color: #6c757d !important;
+    background-color: transparent !important;
 }
 
 body.light-theme .btn-outline-light:hover {
     background-color: #6c757d !important;
     color: #ffffff !important;
+    border-color: #6c757d !important;
 }
 
 body.light-theme .card {
     background-color: #ffffff !important;
     border-color: #dee2e6 !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
 }
 
 body.light-theme .card-header {
     background-color: #f8f9fa !important;
     border-color: #dee2e6 !important;
     color: #212529 !important;
+    font-weight: 600 !important;
+}
+
+body.light-theme .card-header.bg-primary {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+
+body.light-theme .card-header.bg-info {
+    background-color: #0dcaf0 !important;
+    color: #000000 !important;
 }
 
 body.light-theme .bg-primary {
     background-color: #0d6efd !important;
+    color: #ffffff !important;
 }
 
 body.light-theme .bg-dark {
@@ -53,6 +74,10 @@ body.light-theme .bg-dark {
 
 body.light-theme .text-muted {
     color: #6c757d !important;
+}
+
+body.light-theme .text-white {
+    color: #212529 !important;
 }
 
 body.light-theme .form-control,
@@ -67,16 +92,34 @@ body.light-theme .form-select:focus {
     background-color: #ffffff !important;
     border-color: #86b7fe !important;
     color: #212529 !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+body.light-theme .form-text {
+    color: #6c757d !important;
+}
+
+body.light-theme .form-label {
+    color: #212529 !important;
+    font-weight: 500 !important;
 }
 
 body.light-theme .btn-primary {
     background-color: #0d6efd !important;
     border-color: #0d6efd !important;
+    color: #ffffff !important;
 }
 
 body.light-theme .btn-secondary {
     background-color: #6c757d !important;
     border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+body.light-theme .btn-success {
+    background-color: #198754 !important;
+    border-color: #198754 !important;
+    color: #ffffff !important;
 }
 
 body.light-theme .alert-danger {
@@ -91,6 +134,12 @@ body.light-theme .alert-success {
     color: #0f5132 !important;
 }
 
+body.light-theme .alert-info {
+    background-color: #cff4fc !important;
+    border-color: #b6effb !important;
+    color: #055160 !important;
+}
+
 body.light-theme pre {
     background-color: #f8f9fa !important;
     color: #212529 !important;
@@ -98,8 +147,49 @@ body.light-theme pre {
 }
 
 body.light-theme code {
+    background-color: #f1f3f4 !important;
+    color: #d63384 !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 0.25rem !important;
+}
+
+body.light-theme .modal-content {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+body.light-theme .modal-header {
+    border-color: #dee2e6 !important;
+}
+
+body.light-theme .modal-footer {
+    border-color: #dee2e6 !important;
+}
+
+body.light-theme .table {
+    color: #212529 !important;
+}
+
+body.light-theme .table-striped > tbody > tr:nth-of-type(odd) > td,
+body.light-theme .table-striped > tbody > tr:nth-of-type(odd) > th {
     background-color: #f8f9fa !important;
-    color: #e83e8c !important;
+}
+
+/* Ensure dark theme text remains visible */
+body:not(.light-theme) .text-white {
+    color: #ffffff !important;
+}
+
+body:not(.light-theme) .card-header {
+    color: #ffffff !important;
+}
+
+body:not(.light-theme) .form-label {
+    color: #ffffff !important;
+}
+
+body:not(.light-theme) .form-text {
+    color: #adb5bd !important;
 }
 
 /* Ensure consistent height for cards */
