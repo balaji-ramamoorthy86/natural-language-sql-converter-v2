@@ -34,6 +34,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
 }
 
+# Disable caching for development
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
 # Initialize the app with the extension
 db.init_app(app)
 
