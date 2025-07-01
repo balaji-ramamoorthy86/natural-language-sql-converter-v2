@@ -154,6 +154,14 @@ class SQLConverter {
     }
 
     displaySQLResult(result) {
+        // Ensure loading state is completely hidden
+        this.showLoading(false);
+        
+        // Additional safety check to hide any stuck loading modals
+        setTimeout(() => {
+            this.showLoading(false);
+        }, 100);
+        
         // Show the SQL output section
         const sqlOutput = document.getElementById('sqlOutput');
         const emptyState = document.getElementById('emptyState');
@@ -187,6 +195,11 @@ class SQLConverter {
         // Display validation results if available
         if (result.validation) {
             this.displayValidationResults(result.validation);
+        }
+
+        // Display feedback analysis if available
+        if (result.feedback) {
+            this.displayFeedbackAnalysis(result.feedback);
         }
 
         // Store the current SQL for later use
@@ -1042,6 +1055,269 @@ function loadHistoryItem(index) {
         window.sqlConverter.showSuccess('Query loaded from history');
     }
 }
+
+// Add displayFeedbackAnalysis method to SQLConverter class
+SQLConverter.prototype.displayFeedbackAnalysis = function(feedback) {
+    const feedbackSection = document.getElementById('feedbackSection');
+    if (!feedbackSection || !feedback) return;
+
+    // Show feedback section
+    feedbackSection.classList.remove('d-none');
+
+    // Update overall score
+    const overallScore = document.getElementById('overallScore');
+    const score = Math.round(feedback.analysis.overall_score);
+    if (overallScore) {
+        overallScore.textContent = `${score}/100`;
+        overallScore.className = `badge badge-lg ${this.getScoreBadgeClass(score)}`;
+    }
+
+    // Update score breakdown
+    const scores = feedback.analysis;
+    this.updateScoreDisplay('syntaxScore', scores.syntax_score);
+    this.updateScoreDisplay('semanticScore', scores.semantic_score);
+    this.updateScoreDisplay('performanceScore', scores.performance_score);
+    this.updateScoreDisplay('securityScore', scores.security_score);
+
+    // Update recommendations
+    const recommendationsList = document.getElementById('recommendationsList');
+    if (recommendationsList && feedback.recommendations) {
+        recommendationsList.innerHTML = '';
+        feedback.recommendations.forEach(rec => {
+            const li = document.createElement('li');
+            li.textContent = rec;
+            recommendationsList.appendChild(li);
+        });
+    }
+
+    // Store feedback for user rating
+    this.currentFeedback = feedback;
+};
+
+SQLConverter.prototype.updateScoreDisplay = function(elementId, score) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = Math.round(score);
+        element.className = `fw-bold ${this.getScoreColorClass(score)}`;
+    }
+};
+
+SQLConverter.prototype.getScoreBadgeClass = function(score) {
+    if (score >= 90) return 'bg-success';
+    if (score >= 70) return 'bg-warning';
+    return 'bg-danger';
+};
+
+SQLConverter.prototype.getScoreColorClass = function(score) {
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-warning';
+    return 'text-danger';
+};
+
+// Feedback-related functions
+let userRating = 0;
+
+function initializeRatingSystem() {
+    const stars = document.querySelectorAll('.rating-star');
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            userRating = parseInt(this.dataset.rating);
+            updateStarDisplay(userRating);
+        });
+        
+        star.addEventListener('mouseover', function() {
+            const rating = parseInt(this.dataset.rating);
+            updateStarDisplay(rating, true);
+        });
+    });
+
+    // Reset on mouse leave
+    document.querySelector('.rating').addEventListener('mouseleave', function() {
+        updateStarDisplay(userRating);
+    });
+}
+
+function updateStarDisplay(rating, isHover = false) {
+    const stars = document.querySelectorAll('.rating-star');
+    stars.forEach((star, index) => {
+        const starRating = index + 1;
+        if (starRating <= rating) {
+            star.classList.remove('far');
+            star.classList.add('fas');
+            star.style.color = isHover ? '#ffc107' : '#f39c12';
+        } else {
+            star.classList.remove('fas');
+            star.classList.add('far');
+            star.style.color = '#6c757d';
+        }
+    });
+}
+
+async function submitUserRating() {
+    if (!userRating || userRating < 1 || userRating > 5) {
+        window.sqlConverter.showError('Please select a rating from 1 to 5 stars');
+        return;
+    }
+
+    if (!window.sqlConverter.currentQueryId) {
+        window.sqlConverter.showError('No query available for rating');
+        return;
+    }
+
+    try {
+        const response = await fetch('/feedback/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query_id: window.sqlConverter.currentQueryId,
+                rating: userRating,
+                comments: '' // Could add comment input later
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.sqlConverter.showSuccess('Thank you for your feedback!');
+            // Disable rating after submission
+            document.querySelectorAll('.rating-star').forEach(star => {
+                star.style.pointerEvents = 'none';
+                star.style.opacity = '0.6';
+            });
+            document.querySelector('button[onclick="submitUserRating()"]').disabled = true;
+        } else {
+            window.sqlConverter.showError(result.error || 'Failed to submit rating');
+        }
+    } catch (error) {
+        window.sqlConverter.showError('Network error while submitting rating');
+    }
+}
+
+async function showDetailedFeedback() {
+    if (!window.sqlConverter.currentFeedback) {
+        window.sqlConverter.showError('No feedback analysis available');
+        return;
+    }
+
+    const feedback = window.sqlConverter.currentFeedback;
+    const modalContent = `
+        <div class="modal fade" id="detailedFeedbackModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Detailed Query Analysis</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${generateDetailedFeedbackHTML(feedback)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if present
+    const existingModal = document.getElementById('detailedFeedbackModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add new modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalContent);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('detailedFeedbackModal'));
+    modal.show();
+}
+
+function generateDetailedFeedbackHTML(feedback) {
+    let html = `
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h6>Score Breakdown</h6>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Syntax Quality</span>
+                        <span class="badge ${window.sqlConverter.getScoreBadgeClass(feedback.analysis.syntax_score)}">${Math.round(feedback.analysis.syntax_score)}/100</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Intent Matching</span>
+                        <span class="badge ${window.sqlConverter.getScoreBadgeClass(feedback.analysis.semantic_score)}">${Math.round(feedback.analysis.semantic_score)}/100</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Performance</span>
+                        <span class="badge ${window.sqlConverter.getScoreBadgeClass(feedback.analysis.performance_score)}">${Math.round(feedback.analysis.performance_score)}/100</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Security</span>
+                        <span class="badge ${window.sqlConverter.getScoreBadgeClass(feedback.analysis.security_score)}">${Math.round(feedback.analysis.security_score)}/100</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Overall Score</h6>
+                <div class="text-center">
+                    <div class="display-4 ${window.sqlConverter.getScoreColorClass(feedback.analysis.overall_score)}">${Math.round(feedback.analysis.overall_score)}</div>
+                    <small class="text-muted">out of 100</small>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add issues and suggestions sections
+    const sections = [
+        { title: 'Syntax Issues', items: feedback.feedback.syntax_issues, icon: 'code', type: 'danger' },
+        { title: 'Semantic Issues', items: feedback.feedback.semantic_issues, icon: 'brain', type: 'warning' },
+        { title: 'Performance Suggestions', items: feedback.feedback.performance_suggestions, icon: 'tachometer-alt', type: 'info' },
+        { title: 'Security Warnings', items: feedback.feedback.security_warnings, icon: 'shield-alt', type: 'danger' }
+    ];
+
+    sections.forEach(section => {
+        if (section.items && section.items.length > 0) {
+            html += `
+                <div class="mb-3">
+                    <h6><i class="fas fa-${section.icon} me-2"></i>${section.title}</h6>
+                    <div class="alert alert-${section.type}">
+                        <ul class="mb-0">
+                            ${section.items.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    // Add execution results if available
+    if (feedback.execution_results && feedback.execution_results.success) {
+        html += `
+            <div class="mb-3">
+                <h6><i class="fas fa-play-circle me-2"></i>Execution Results</h6>
+                <div class="alert alert-success">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Execution Time:</strong> ${feedback.execution_results.execution_time}s
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Rows Returned:</strong> ${feedback.execution_results.row_count}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Columns:</strong> ${feedback.execution_results.columns ? feedback.execution_results.columns.length : 0}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+// Initialize rating system when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initializeRatingSystem();
+});
 
 
 
