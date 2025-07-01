@@ -14,14 +14,10 @@ except ImportError:
     PYODBC_AVAILABLE = False
     pyodbc = None
 
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    PSYCOPG2_AVAILABLE = True
-except ImportError:
-    PSYCOPG2_AVAILABLE = False
-    psycopg2 = None
-    RealDictCursor = None
+# PostgreSQL support removed - using in-memory storage instead
+PSYCOPG2_AVAILABLE = False
+psycopg2 = None
+RealDictCursor = None
 import json
 import re
 from collections import Counter
@@ -81,19 +77,26 @@ class SchemaAnalyzer:
         db_type = connection_info.get('database_type', 'postgresql').lower()
         
         try:
-            if db_type == 'postgresql':
-                return psycopg2.connect(
-                    host=connection_info.get('host', 'localhost'),
-                    database=connection_info.get('database', 'postgres'),
-                    user=connection_info.get('username', 'postgres'),
-                    password=connection_info.get('password', ''),
-                    port=connection_info.get('port', 5432)
-                )
-            elif db_type == 'sqlserver':
-                conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={connection_info.get('host', 'localhost')};DATABASE={connection_info.get('database', 'master')};UID={connection_info.get('username', '')};PWD={connection_info.get('password', '')}"
+            if db_type == 'sqlserver':
+                if not PYODBC_AVAILABLE or pyodbc is None:
+                    raise ImportError("pyodbc is not available. Please install it to connect to SQL Server.")
+                
+                # Build connection string with support for different authentication types
+                auth_type = connection_info.get('auth_type', 'sql')
+                server = connection_info.get('host', 'localhost')
+                port = connection_info.get('port', '1433')
+                database = connection_info.get('database', 'master')
+                
+                if auth_type == 'windows':
+                    conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server},{port};DATABASE={database};Trusted_Connection=yes;TrustServerCertificate=yes;Encrypt=yes"
+                else:
+                    username = connection_info.get('username', '')
+                    password = connection_info.get('password', '')
+                    conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server},{port};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;Encrypt=yes"
+                
                 return pyodbc.connect(conn_str)
             else:
-                raise ValueError(f"Unsupported database type: {db_type}")
+                raise ValueError(f"Unsupported database type: {db_type}. Only SQL Server is supported.")
                 
         except Exception as e:
             self.logger.error(f"Database connection failed: {str(e)}")
