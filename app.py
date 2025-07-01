@@ -1,9 +1,9 @@
 import os
 import logging
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from services.azure_openai_service import AzureOpenAIService
 from services.sql_validator import SQLValidator
@@ -17,28 +17,17 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
+# In-memory storage for query history
+query_history_storage = []
+next_query_id = 1
 
 # Create the app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///nlp_to_sql.db")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
 # Disable caching for development
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-
-# Initialize the app with the extension
-db.init_app(app)
 
 # Initialize services
 azure_openai_service = AzureOpenAIService()
@@ -82,10 +71,27 @@ def convert_analysis_to_json_schema(analysis_result, schema_name):
     
     return json_schema
 
-with app.app_context():
-    # Import models to ensure tables are created
-    import models
-    db.create_all()
+# Helper functions for in-memory query history
+def add_query_to_history(natural_language, generated_sql, optimized_sql=None, is_valid=False):
+    """Add a query to in-memory history"""
+    global next_query_id
+    
+    query_record = {
+        'id': next_query_id,
+        'natural_language': natural_language,
+        'generated_sql': generated_sql,
+        'optimized_sql': optimized_sql,
+        'is_valid': is_valid,
+        'created_at': datetime.now()
+    }
+    
+    query_history_storage.append(query_record)
+    next_query_id += 1
+    return query_record
+
+def get_query_history(limit=10):
+    """Get recent query history"""
+    return sorted(query_history_storage, key=lambda x: x['created_at'], reverse=True)[:limit]
 
 @app.route('/')
 def index():
@@ -144,22 +150,20 @@ def convert_to_sql():
         # Validate and optimize the generated SQL
         validation_result = sql_validator.validate_and_optimize(generated_sql)
         
-        # Store the query in database for history
-        query_record = models.QueryHistory(
+        # Store the query in memory for history
+        query_record = add_query_to_history(
             natural_language=natural_language,
             generated_sql=generated_sql,
             optimized_sql=validation_result.get('optimized_sql', generated_sql),
             is_valid=validation_result['is_valid']
         )
-        db.session.add(query_record)
-        db.session.commit()
         
         return jsonify({
             'success': True,
             'sql': validation_result.get('optimized_sql', generated_sql),
             'explanation': sql_result.get('explanation', ''),
             'validation': validation_result,
-            'query_id': query_record.id
+            'query_id': query_record['id']
         })
         
     except Exception as e:
@@ -240,17 +244,17 @@ def get_schema_details(schema_name):
 def query_history():
     """Get query history"""
     try:
-        queries = models.QueryHistory.query.order_by(models.QueryHistory.created_at.desc()).limit(50).all()
+        queries = get_query_history(50)
         
         history = []
         for query in queries:
             history.append({
-                'id': query.id,
-                'natural_language': query.natural_language,
-                'generated_sql': query.generated_sql,
-                'optimized_sql': query.optimized_sql,
-                'is_valid': query.is_valid,
-                'created_at': query.created_at.isoformat()
+                'id': query['id'],
+                'natural_language': query['natural_language'],
+                'generated_sql': query['generated_sql'],
+                'optimized_sql': query['optimized_sql'],
+                'is_valid': query['is_valid'],
+                'created_at': query['created_at'].isoformat()
             })
         
         return jsonify({
@@ -340,7 +344,6 @@ def upload_schema():
         
     except Exception as e:
         app.logger.error(f"Error uploading schema: {str(e)}")
-        db.session.rollback()
         return jsonify({
             'success': False,
             'error': f'An error occurred while uploading schema: {str(e)}'
@@ -405,6 +408,32 @@ def analyze_schema():
         return jsonify({
             'success': False,
             'error': f'An error occurred while analyzing schema: {str(e)}'
+        }), 500
+
+# Test connection endpoint for schema analyzer
+@app.route('/test-connection', methods=['POST'])
+def test_connection():
+    """Test database connection"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'connection_info' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Connection information is required'
+            }), 400
+        
+        connection_info = data['connection_info']
+        
+        # Test SQL Server connection
+        result = sqlserver_service.test_connection(connection_info)
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.error(f"Error testing connection: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Connection test failed: {str(e)}'
         }), 500
 
 # SQL Server specific routes
@@ -563,7 +592,6 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    db.session.rollback()
     return render_template('base.html'), 500
 
 if __name__ == '__main__':
