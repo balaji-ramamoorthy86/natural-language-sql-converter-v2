@@ -516,3 +516,29 @@ footer {
     border-color: var(--bs-primary);
     color: #e9ecef;
 }
+
+/* Scroll restoration fixes */
+html, body {
+    overflow-x: hidden !important;
+}
+
+body {
+    overflow-y: auto !important;
+}
+
+/* Prevent scroll locking when modals are hidden */
+body:not(.modal-open) {
+    overflow: auto !important;
+    padding-right: 0 !important;
+}
+
+/* Emergency scroll restoration class */
+.scroll-restored {
+    overflow: auto !important;
+    padding-right: 0 !important;
+}
+
+/* Ensure modals don't permanently lock scrolling */
+.modal-backdrop.fade:not(.show) {
+    display: none !important;
+}
