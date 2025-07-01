@@ -14,9 +14,9 @@ The application follows a layered architecture pattern with clear separation of 
 - **Styling**: Custom CSS with Bootstrap framework for consistent dark theme experience
 
 ### Backend Architecture
-- **Framework**: Flask with SQLAlchemy ORM
+- **Framework**: Flask with lightweight in-memory storage
 - **Pattern**: Service-oriented architecture with dedicated service classes
-- **Database**: SQLite for development (configurable to other databases via DATABASE_URL)
+- **Storage**: In-memory storage for query history (resets on restart)
 - **AI Integration**: Azure OpenAI API for natural language processing
 
 ## Key Components
@@ -50,9 +50,9 @@ The application follows a layered architecture pattern with clear separation of 
    - Provides demo database configurations for testing
    - Handles API authentication and error management
 
-### Data Models
-1. **QueryHistory** - Stores conversion history and results
-2. **UserFeedback** - Collects user ratings and feedback
+### Data Storage
+1. **Query History** - Stored in-memory during runtime, resets on application restart
+2. **Schema Definitions** - Persistent JSON files in `services/schemas/` directory
 
 ### Schema Management
 - **JSON-based Schema Storage**: Schemas stored in `services/schemas/` directory
@@ -99,14 +99,14 @@ The application follows a layered architecture pattern with clear separation of 
 ## Deployment Strategy
 
 ### Environment Configuration
-- Database URL configurable via `DATABASE_URL` environment variable
 - Azure OpenAI credentials via environment variables
 - Session secret configurable for production security
+- No database setup required - uses in-memory storage
 
 ### Production Considerations
-- SQLite for development, easily configurable for PostgreSQL/SQL Server
+- Lightweight deployment with minimal dependencies
 - ProxyFix middleware for proper header handling behind proxies
-- Connection pooling and ping mechanisms for database reliability
+- Query history resets on application restart (stateless design)
 
 ### Security Features
 - SQL injection pattern detection
@@ -144,6 +144,25 @@ The application follows a layered architecture pattern with clear separation of 
   - Each JSON file automatically creates dropdown option without code changes
   - Added comprehensive documentation and template files for schema format
   - Simplified schema addition process - just add JSON file to schemas directory
+- July 1, 2025. Completed automated schema saving workflow:
+  - "Analyze Database" button now automatically converts AI analysis to JSON format
+  - Schemas are automatically saved to services/schemas/ directory with proper naming
+  - New schemas immediately appear in dropdown without restart required
+  - Added user notifications and confirmation messages for automatic saving
+  - Project committed to GitHub repository with all completed features
+- July 1, 2025. Migrated from PostgreSQL to in-memory storage:
+  - Removed PostgreSQL and SQLAlchemy dependencies for simplified deployment
+  - Implemented lightweight in-memory storage for query history
+  - Removed database models and migrations - now stateless architecture
+  - Query history resets on application restart but retains functionality during runtime
+  - Significantly reduced deployment complexity and resource requirements
+- July 1, 2025. Enhanced AI Schema Analyzer with authentication options and UI improvements:
+  - Added SQL Server Authentication and Windows Authentication dropdown options
+  - Implemented Test Connection button to verify database connectivity before analysis
+  - Updated JavaScript to handle authentication type switching and form validation
+  - Added backend /test-connection endpoint for connection verification
+  - Fixed AI Analysis Results section visibility issues with improved contrast and styling
+  - Enhanced modal headers and form styling for better user experience
 
 ## User Preferences
 
