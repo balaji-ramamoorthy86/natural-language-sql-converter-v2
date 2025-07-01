@@ -755,3 +755,131 @@ body.light-theme #analysisResults .text-center {
     margin-bottom: 1rem;
     opacity: 0.3;
 }
+
+/* Query Feedback System Styling */
+#feedbackSection {
+    background-color: var(--bs-gray-900);
+    border: 1px solid var(--bs-gray-700);
+    border-radius: 0.5rem;
+}
+
+#feedbackContent {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-600);
+}
+
+/* Score display styling */
+.score-display {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* Rating stars styling */
+.rating {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rating-star {
+    cursor: pointer;
+    transition: color 0.2s ease;
+    font-size: 1.2rem;
+}
+
+.rating-star:hover {
+    transform: scale(1.1);
+}
+
+.rating-star.far {
+    color: #6c757d;
+}
+
+.rating-star.fas {
+    color: #f39c12;
+}
+
+/* Badge styling for scores */
+.badge-lg {
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Feedback modal styling */
+#detailedFeedbackModal .modal-content {
+    background-color: var(--bs-gray-900);
+    border-color: var(--bs-gray-700);
+}
+
+#detailedFeedbackModal .modal-header {
+    border-bottom-color: var(--bs-gray-700);
+}
+
+#detailedFeedbackModal .list-group-item {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700);
+    color: #e9ecef;
+}
+
+/* Score color classes for feedback */
+.score-excellent {
+    color: #28a745;
+}
+
+.score-good {
+    color: #17a2b8;
+}
+
+.score-fair {
+    color: #ffc107;
+}
+
+.score-poor {
+    color: #dc3545;
+}
+
+/* Light theme overrides for feedback */
+body.light-theme #feedbackSection {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+}
+
+body.light-theme #feedbackContent {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+body.light-theme #detailedFeedbackModal .modal-content {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+}
+
+body.light-theme #detailedFeedbackModal .modal-header {
+    border-bottom-color: #dee2e6;
+}
+
+body.light-theme #detailedFeedbackModal .list-group-item {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+    color: #212529;
+}
+
+/* Responsive feedback display */
+@media (max-width: 768px) {
+    #scoreBreakdown {
+        margin-bottom: 1rem;
+    }
+    
+    #scoreBreakdown .col-6 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .rating {
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+    
+    .badge-lg {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.5rem;
+    }
+}
