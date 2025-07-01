@@ -1,7 +1,13 @@
 import os
 import logging
 from typing import Dict, List, Any
-import pyodbc
+
+try:
+    import pyodbc
+    PYODBC_AVAILABLE = True
+except ImportError:
+    PYODBC_AVAILABLE = False
+    pyodbc = None
 
 class SchemaService:
     """Service for managing database schema information"""
