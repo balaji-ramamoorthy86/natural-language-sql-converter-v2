@@ -15,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/custom.css') }}?v=1704123600" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/custom.css') }}?v=1704123700" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
@@ -55,6 +55,12 @@
                             <i class="fas fa-robot me-1"></i>
                             AI Analyzer
                         </a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light btn-sm ms-2" id="themeToggle" onclick="toggleTheme()">
+                            <i class="fas fa-sun me-1"></i>
+                            Light
+                        </button>
                     </li>
                 </ul>
             </div>
@@ -275,7 +281,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
     
     <!-- Custom JavaScript -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=1704123600"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=1704123700"></script>
 
     {% block scripts %}{% endblock %}
 </body>
