@@ -131,6 +131,71 @@
                             <h6 class="text-muted">Validation Results:</h6>
                             <div id="validationContent"></div>
                         </div>
+
+                        <!-- Query Feedback Analysis -->
+                        <div id="feedbackSection" class="mt-4 d-none">
+                            <h6 class="text-muted">Quality Analysis:</h6>
+                            <div id="feedbackContent" class="border rounded p-3">
+                                <!-- Overall Score -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Overall Score:</span>
+                                            <span id="overallScore" class="badge badge-lg"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showDetailedFeedback()">
+                                            <i class="fas fa-chart-line me-1"></i>
+                                            Detailed Analysis
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Score Breakdown -->
+                                <div id="scoreBreakdown" class="row mb-3">
+                                    <div class="col-6 col-md-3 text-center">
+                                        <small class="text-muted">Syntax</small>
+                                        <div id="syntaxScore" class="fw-bold"></div>
+                                    </div>
+                                    <div class="col-6 col-md-3 text-center">
+                                        <small class="text-muted">Intent Match</small>
+                                        <div id="semanticScore" class="fw-bold"></div>
+                                    </div>
+                                    <div class="col-6 col-md-3 text-center">
+                                        <small class="text-muted">Performance</small>
+                                        <div id="performanceScore" class="fw-bold"></div>
+                                    </div>
+                                    <div class="col-6 col-md-3 text-center">
+                                        <small class="text-muted">Security</small>
+                                        <div id="securityScore" class="fw-bold"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Recommendations -->
+                                <div id="recommendations" class="mt-3">
+                                    <small class="text-muted">Recommendations:</small>
+                                    <ul id="recommendationsList" class="small mt-2"></ul>
+                                </div>
+
+                                <!-- User Feedback -->
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted">Rate this query:</small>
+                                    <div class="d-flex align-items-center mt-2">
+                                        <div class="rating me-3">
+                                            <i class="fas fa-star rating-star" data-rating="1"></i>
+                                            <i class="fas fa-star rating-star" data-rating="2"></i>
+                                            <i class="fas fa-star rating-star" data-rating="3"></i>
+                                            <i class="fas fa-star rating-star" data-rating="4"></i>
+                                            <i class="fas fa-star rating-star" data-rating="5"></i>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="submitUserRating()">
+                                            Submit Rating
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Empty State -->
