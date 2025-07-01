@@ -30,20 +30,20 @@
                 </div>
                 <div class="card-body">
                     <form id="sqlConverterForm">
-                        <!-- Schema Selection -->
+                        <!-- Database Schema Selection -->
                         <div class="mb-3">
                             <label for="schemaSelect" class="form-label">
                                 <i class="fas fa-database me-1"></i>
                                 Database Schema Context
                             </label>
                             <select class="form-select" id="schemaSelect" name="schema_context">
-                                <option value="">Select a schema (optional)</option>
+                                <option value="">No schema selected - Use generic SQL templates</option>
                                 {% for schema in schemas %}
-                                <option value="{{ schema }}">{{ schema }}</option>
+                                <option value="{{ schema }}">{{ schema.title() }} Database Schema</option>
                                 {% endfor %}
                             </select>
                             <div class="form-text">
-                                Selecting a schema provides better context for query generation
+                                <strong>Choose your database schema</strong> to generate accurate SQL queries with real table and column names instead of generic templates.
                             </div>
                         </div>
 
@@ -152,72 +152,7 @@
         </div>
     </div>
 
-    <!-- Database Selection Section -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-database me-2"></i>
-                        Database Selection
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-4">
-                        Select a database to load its schema for SQL query generation. Connection details are automatically retrieved from the configuration API.
-                    </p>
-                    
-                    <div class="row">
-                        <div class="col-lg-8">
-                            <div class="mb-3">
-                                <label for="databaseSelect" class="form-label">Available Databases</label>
-                                <select class="form-select" id="databaseSelect">
-                                    <option value="">Loading databases...</option>
-                                </select>
-                                <div class="form-text">Database connection strings are managed through the configuration API.</div>
-                            </div>
-                            
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-primary" onclick="testSelectedDatabase()" disabled id="testDbBtn">
-                                    <i class="fas fa-plug me-1"></i>
-                                    Test Connection
-                                </button>
-                                <button type="button" class="btn btn-success" onclick="connectToSelectedDatabase()" disabled id="connectDbBtn">
-                                    <i class="fas fa-link me-1"></i>
-                                    Connect & Load Schema
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-4">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title">Connection Status</h6>
-                                    <div id="databaseStatus">
-                                        <span class="badge bg-secondary">No Database Selected</span>
-                                    </div>
-                                    
-                                    <hr>
-                                    
-                                    <h6 class="card-title">Selected Database</h6>
-                                    <div id="selectedDatabaseDetails">
-                                        <p class="text-muted small">Select a database to view details</p>
-                                    </div>
-                                    
-                                    <hr>
-                                    
-                                    <h6 class="card-title">Connection Information</h6>
-                                    <div id="databaseConnectionInfo">
-                                        <p class="text-muted small">Connection details will appear after testing</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Features Section -->
     <div class="row mt-5">
@@ -270,22 +205,7 @@
         </div>
     </div>
 
-    <!-- Schema Information -->
-    <div class="row mt-5" id="schemaInfo" style="display: none;">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-table me-2"></i>
-                        Schema Information
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="schemaDetails"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 </div>
 {% endblock %}
 
@@ -299,16 +219,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const query = this.dataset.query;
             document.getElementById('naturalLanguageInput').value = query;
         });
-    });
-
-    // Handle schema selection change
-    document.getElementById('schemaSelect').addEventListener('change', function() {
-        const selectedSchema = this.value;
-        if (selectedSchema) {
-            loadSchemaDetails(selectedSchema);
-        } else {
-            document.getElementById('schemaInfo').style.display = 'none';
-        }
     });
 });
 </script>
