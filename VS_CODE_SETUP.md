@@ -33,8 +33,11 @@ venv\Scripts\activate
 # On macOS/Linux:
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies from pyproject.toml
+pip install -e .
+
+# Alternative: Install dependencies manually if above doesn't work
+pip install azure-ai-inference azure-core email-validator flask flask-sqlalchemy gunicorn openai psycopg2-binary pyodbc requests sqlalchemy sqlparse werkzeug
 ```
 
 #### Option B: Using Poetry (if you prefer)
