@@ -4,8 +4,14 @@ Handles connections and operations for on-premises SQL Server instances
 """
 
 import os
-import pyodbc
 import logging
+
+try:
+    import pyodbc
+    PYODBC_AVAILABLE = True
+except ImportError:
+    PYODBC_AVAILABLE = False
+    pyodbc = None
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 import json
