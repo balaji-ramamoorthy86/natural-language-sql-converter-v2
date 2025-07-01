@@ -33,11 +33,25 @@ venv\Scripts\activate
 # On macOS/Linux:
 source venv/bin/activate
 
-# Install dependencies from pyproject.toml
+# Install dependencies (try methods in order)
+
+# Method 1: Using pyproject.toml (after fixing the layout issue)
 pip install -e .
 
-# Alternative: Install dependencies manually if above doesn't work
+# Method 2: If above fails, install all at once
 pip install azure-ai-inference azure-core email-validator flask flask-sqlalchemy gunicorn openai psycopg2-binary pyodbc requests sqlalchemy sqlparse werkzeug
+
+# Method 3: Core packages only (if you get dependency conflicts)
+pip install flask flask-sqlalchemy requests sqlalchemy sqlparse werkzeug gunicorn
+
+# Method 4: Install one by one (if bulk install fails)
+pip install flask
+pip install flask-sqlalchemy
+pip install requests
+pip install sqlalchemy
+pip install sqlparse
+pip install werkzeug
+pip install gunicorn
 ```
 
 #### Option B: Using Poetry (if you prefer)
@@ -54,22 +68,22 @@ poetry shell
 
 ### 4. Configure Environment Variables
 
-Create a `.env` file in the project root:
+The project includes a `.env` file with default settings. You can customize it for your needs:
+
 ```bash
-# Database Configuration
+# The .env file is already present with these default settings:
 DATABASE_URL=sqlite:///app.db
+SESSION_SECRET=change-this-to-a-secure-random-string-for-production-use
+FLASK_ENV=development
+FLASK_DEBUG=1
 
-# Session Security (Required)
-SESSION_SECRET=your-secret-key-here-change-this-in-production
-
-# Azure OpenAI (Optional - fallback service works without these)
-AZURE_OPENAI_ENDPOINT=your-azure-openai-endpoint
-AZURE_OPENAI_API_KEY=your-azure-openai-api-key
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
-
-# GitHub Integration (Optional)
-GITHUB_TOKEN=your-github-token-for-uploads
+# Optional: Add Azure OpenAI credentials for enhanced functionality
+# AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+# AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+# AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
+
+**Important**: Change the `SESSION_SECRET` to a secure random string in production!
 
 ## Running the Application
 
@@ -185,19 +199,29 @@ python -c "from app import app, db; app.app_context().push(); db.create_all()"
 
 ### Common Issues
 
-1. **"Module not found" errors**:
+1. **Pip install errors**:
+   - **"Multiple top-level packages discovered in a flat-layout"**: Fixed in latest pyproject.toml - try `pip install -e .` again
+   - **"No module named 'pip'"**: Reinstall pip: `python -m ensurepip --upgrade`
+   - **Permission denied**: Use `pip install --user` or run as administrator
+   - **SSL errors**: Try `pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org <package>`
+   - **Dependency conflicts**: Use Method 3 (core packages only) from above
+   - **pyodbc errors on Windows**: Install Microsoft Visual C++ Build Tools
+   - **psycopg2 errors**: Try `pip install psycopg2-binary` instead
+
+2. **"Module not found" errors**:
    - Ensure virtual environment is activated
    - Check that dependencies are installed: `pip list`
+   - Try: `python -m pip install <missing-package>`
 
-2. **Port already in use**:
+3. **Port already in use**:
    - Kill existing processes: `pkill -f python` or `taskkill /f /im python.exe`
    - Use a different port: `flask run --port 5001`
 
-3. **Database errors**:
+4. **Database errors**:
    - Delete the database file and restart: `rm app.db`
    - Check DATABASE_URL environment variable
 
-4. **Permission errors**:
+5. **Permission errors**:
    - Ensure you have write permissions in the project directory
    - Check file ownership and permissions
 
