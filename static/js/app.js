@@ -88,13 +88,8 @@ class SQLConverter {
     }
 
     async handleSchemaChange(event) {
-        const schemaName = event.target.value;
-        
-        if (schemaName) {
-            await this.loadSchemaDetails(schemaName);
-        } else {
-            this.hideSchemaInfo();
-        }
+        // Schema context is now used only for SQL generation context
+        // No UI display needed
     }
 
     displaySQLResult(result) {
@@ -207,76 +202,7 @@ class SQLConverter {
         }
     }
 
-    async loadSchemaDetails(schemaName) {
-        try {
-            const response = await fetch(`/schema/${encodeURIComponent(schemaName)}`);
-            const result = await response.json();
 
-            if (result.success && result.schema) {
-                this.displaySchemaInfo(result.schema);
-            } else {
-                console.error('Failed to load schema details:', result.error);
-            }
-        } catch (error) {
-            console.error('Error loading schema details:', error);
-        }
-    }
-
-    displaySchemaInfo(schema) {
-        const schemaInfo = document.getElementById('schemaInfo');
-        const schemaDetails = document.getElementById('schemaDetails');
-
-        if (!schemaInfo || !schemaDetails) return;
-
-        let html = '';
-
-        if (schema.tables && Object.keys(schema.tables).length > 0) {
-            html += `<h6 class="mb-3">Schema: ${this.escapeHtml(schema.schema_name)}</h6>`;
-            
-            Object.entries(schema.tables).forEach(([tableName, tableInfo]) => {
-                html += '<div class="schema-table-card">';
-                html += `<div class="schema-table-header">`;
-                html += `<i class="fas fa-table me-2"></i>${this.escapeHtml(tableName)}`;
-                html += '</div>';
-                
-                if (tableInfo.columns && tableInfo.columns.length > 0) {
-                    tableInfo.columns.forEach(column => {
-                        html += '<div class="schema-column">';
-                        html += `<span class="column-name">`;
-                        
-                        // Add icons for special column types
-                        if (tableInfo.primary_keys && tableInfo.primary_keys.includes(column.name)) {
-                            html += '<i class="fas fa-key text-warning me-1" title="Primary Key"></i>';
-                        }
-                        
-                        const fk = tableInfo.foreign_keys && tableInfo.foreign_keys.find(fk => fk.column === column.name);
-                        if (fk) {
-                            html += '<i class="fas fa-link text-info me-1" title="Foreign Key"></i>';
-                        }
-                        
-                        html += this.escapeHtml(column.name);
-                        html += '</span>';
-                        html += `<span class="column-type">${this.escapeHtml(column.type)}</span>`;
-                        html += '</div>';
-                    });
-                }
-                
-                html += '</div>';
-            });
-        } else {
-            html = '<p class="text-muted">No schema information available for this database.</p>';
-        }
-
-        schemaDetails.innerHTML = html;
-        schemaInfo.style.display = 'block';
-    }
-
-    hideSchemaInfo() {
-        const schemaInfo = document.getElementById('schemaInfo');
-        if (schemaInfo) {
-            schemaInfo.style.display = 'none';
-        }
-    }
 
     showLoading(show) {
         try {
@@ -934,188 +860,9 @@ function loadHistoryItem(index) {
     }
 }
 
-async function loadSchemaDetails(schemaName) {
-    if (window.sqlConverter) {
-        await window.sqlConverter.loadSchemaDetails(schemaName);
-    }
-}
 
-// Database Selection Functions
-let selectedDatabase = null;
-let availableDatabases = [];
 
-async function loadAvailableDatabases() {
-    try {
-        const response = await fetch('/api/databases');
-        const result = await response.json();
-        
-        const databaseSelect = document.getElementById('databaseSelect');
-        
-        if (result.success && result.databases) {
-            availableDatabases = result.databases;
-            
-            // Clear existing options
-            databaseSelect.innerHTML = '<option value="">Select a database...</option>';
-            
-            // Add database options
-            result.databases.forEach(db => {
-                const option = document.createElement('option');
-                option.value = db.name;
-                option.textContent = `${db.name} - ${db.description}`;
-                databaseSelect.appendChild(option);
-            });
-            
-            // Enable database selection
-            databaseSelect.disabled = false;
-            
-        } else {
-            databaseSelect.innerHTML = '<option value="">Failed to load databases</option>';
-            window.sqlConverter.showError(result.error || 'Failed to load databases');
-        }
-    } catch (error) {
-        console.error('Error loading databases:', error);
-        const databaseSelect = document.getElementById('databaseSelect');
-        databaseSelect.innerHTML = '<option value="">Error loading databases</option>';
-        window.sqlConverter.showError('Network error while loading databases');
-    }
-}
 
-function handleDatabaseSelection() {
-    const databaseSelect = document.getElementById('databaseSelect');
-    const selectedDbName = databaseSelect.value;
-    
-    if (selectedDbName) {
-        selectedDatabase = availableDatabases.find(db => db.name === selectedDbName);
-        
-        // Update selected database details
-        const detailsDiv = document.getElementById('selectedDatabaseDetails');
-        detailsDiv.innerHTML = `
-            <div class="small">
-                <strong>Name:</strong> ${selectedDatabase.name}<br>
-                <strong>Description:</strong> ${selectedDatabase.description}<br>
-                <strong>Environment:</strong> ${selectedDatabase.environment || 'Production'}
-            </div>
-        `;
-        
-        // Enable test button
-        document.getElementById('testDbBtn').disabled = false;
-        
-        // Reset status
-        const statusDiv = document.getElementById('databaseStatus');
-        statusDiv.innerHTML = '<span class="badge bg-secondary">Selected</span>';
-        
-    } else {
-        selectedDatabase = null;
-        document.getElementById('testDbBtn').disabled = true;
-        document.getElementById('connectDbBtn').disabled = true;
-        
-        const detailsDiv = document.getElementById('selectedDatabaseDetails');
-        detailsDiv.innerHTML = '<p class="text-muted small">Select a database to view details</p>';
-        
-        const statusDiv = document.getElementById('databaseStatus');
-        statusDiv.innerHTML = '<span class="badge bg-secondary">No Database Selected</span>';
-    }
-}
-
-async function testSelectedDatabase() {
-    if (!selectedDatabase) {
-        window.sqlConverter.showError('Please select a database first');
-        return;
-    }
-    
-    const statusDiv = document.getElementById('databaseStatus');
-    statusDiv.innerHTML = '<span class="badge bg-warning">Testing...</span>';
-    
-    try {
-        const response = await fetch(`/api/databases/${selectedDatabase.name}/test`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            statusDiv.innerHTML = '<span class="badge bg-success">Connected</span>';
-            
-            // Show connection info
-            const connectionInfoDiv = document.getElementById('databaseConnectionInfo');
-            connectionInfoDiv.innerHTML = `
-                <div class="small">
-                    <strong>Server:</strong> ${result.server_info?.server_name || 'Connected'}<br>
-                    <strong>Version:</strong> ${result.server_info?.version || 'Unknown'}
-                </div>
-            `;
-            
-            // Enable connect button
-            document.getElementById('connectDbBtn').disabled = false;
-            
-            window.sqlConverter.showSuccess('Database connection test successful!');
-        } else {
-            statusDiv.innerHTML = '<span class="badge bg-danger">Failed</span>';
-            document.getElementById('connectDbBtn').disabled = true;
-            
-            const connectionInfoDiv = document.getElementById('databaseConnectionInfo');
-            connectionInfoDiv.innerHTML = '<p class="text-muted small">Connection test failed</p>';
-            
-            window.sqlConverter.showError(result.error || 'Connection test failed');
-        }
-    } catch (error) {
-        console.error('Error testing database connection:', error);
-        statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
-        window.sqlConverter.showError('Network error during connection test');
-    }
-}
-
-async function connectToSelectedDatabase() {
-    if (!selectedDatabase) {
-        window.sqlConverter.showError('Please select a database first');
-        return;
-    }
-    
-    const statusDiv = document.getElementById('databaseStatus');
-    statusDiv.innerHTML = '<span class="badge bg-warning">Connecting...</span>';
-    
-    try {
-        // Load schema for the selected database
-        const response = await fetch(`/api/databases/${selectedDatabase.name}/schema`);
-        const result = await response.json();
-        
-        if (result.success) {
-            statusDiv.innerHTML = '<span class="badge bg-success">Connected & Schema Loaded</span>';
-            
-            // Update schema dropdown in main form
-            const schemaSelect = document.getElementById('schemaSelect');
-            
-            // Remove any existing database schema options
-            const existingOptions = schemaSelect.querySelectorAll('option[value^="database:"]');
-            existingOptions.forEach(option => option.remove());
-            
-            // Add the new database schema option
-            const option = document.createElement('option');
-            option.value = `database:${selectedDatabase.name}`;
-            option.textContent = `${selectedDatabase.name} (${result.table_count || 0} tables)`;
-            schemaSelect.appendChild(option);
-            
-            // Automatically select the new schema
-            schemaSelect.value = `database:${selectedDatabase.name}`;
-            
-            // Trigger schema change event
-            const event = new Event('change');
-            schemaSelect.dispatchEvent(event);
-            
-            window.sqlConverter.showSuccess(`Connected to ${selectedDatabase.name} and loaded schema with ${result.table_count || 0} tables`);
-        } else {
-            statusDiv.innerHTML = '<span class="badge bg-danger">Failed</span>';
-            window.sqlConverter.showError(result.error || 'Failed to load database schema');
-        }
-    } catch (error) {
-        console.error('Error connecting to database:', error);
-        statusDiv.innerHTML = '<span class="badge bg-danger">Error</span>';
-        window.sqlConverter.showError('Network error while connecting to database');
-    }
-}
 
 function getSQLServerConnectionParams() {
     const authMethod = document.getElementById('sqlServerAuth').value;
@@ -1141,13 +888,4 @@ function getSQLServerConnectionParams() {
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     window.sqlConverter = new SQLConverter();
-    
-    // Load available databases on page load
-    loadAvailableDatabases();
-    
-    // Handle database selection changes
-    const databaseSelect = document.getElementById('databaseSelect');
-    if (databaseSelect) {
-        databaseSelect.addEventListener('change', handleDatabaseSelection);
-    }
 });
