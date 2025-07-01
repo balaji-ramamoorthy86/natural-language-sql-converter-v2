@@ -223,14 +223,9 @@ class AzureOpenAIService:
         # Simple keyword-based SQL generation for common patterns
         nl_lower = natural_language.lower()
         
-        if 'select' in nl_lower or 'find' in nl_lower or 'get' in nl_lower or 'show' in nl_lower:
-            # Basic SELECT query template
-            if 'all' in nl_lower or 'everything' in nl_lower:
-                sql = "SELECT * FROM [TableName];"
-                explanation = "Basic SELECT query to retrieve all columns. Please replace [TableName] with the actual table name."
-            else:
-                sql = "SELECT [ColumnNames] FROM [TableName] WHERE [Condition];"
-                explanation = "SELECT query template. Please replace placeholders with actual table and column names."
+        # Initialize default values
+        sql = ""
+        explanation = ""
         
         # Comprehensive list of dangerous SQL operations and database administration commands
         dangerous_operations = [
@@ -252,6 +247,7 @@ class AzureOpenAIService:
             'add', 'modify', 'change', 'remove', 'raise'
         ]
         
+        # Check for dangerous operations first
         if any(op in nl_lower for op in dangerous_operations):
             return {
                 'success': False,
@@ -259,9 +255,28 @@ class AzureOpenAIService:
                 'fallback': True
             }
         
+        # Generate appropriate SELECT queries based on keywords
+        if 'select' in nl_lower or 'find' in nl_lower or 'get' in nl_lower or 'show' in nl_lower or 'list' in nl_lower:
+            if ('all' in nl_lower or 'everything' in nl_lower) and ('user' in nl_lower or 'customer' in nl_lower or 'person' in nl_lower):
+                # Try to use schema context for better table names
+                if 'users' in schema_context.lower():
+                    sql = "SELECT * FROM Users;"
+                    explanation = "Retrieves all columns from the Users table."
+                elif 'customers' in schema_context.lower():
+                    sql = "SELECT * FROM Customers;"
+                    explanation = "Retrieves all columns from the Customers table."
+                else:
+                    sql = "SELECT * FROM [Users];\n-- Replace [Users] with the actual table name containing user information"
+                    explanation = "Basic SELECT query to retrieve all user records. Please replace [Users] with the correct table name."
+            elif 'all' in nl_lower or 'everything' in nl_lower:
+                sql = "SELECT * FROM [TableName];\n-- Replace [TableName] with the actual table name"
+                explanation = "Basic SELECT query to retrieve all columns. Please replace [TableName] with the actual table name."
+            else:
+                sql = "SELECT [ColumnNames] FROM [TableName] WHERE [Condition];\n-- Replace placeholders with actual values"
+                explanation = "SELECT query template. Please replace placeholders with actual table and column names."
         else:
-            sql = "-- Unable to generate SQL from the given description\n-- Please provide more specific requirements"
-            explanation = "Could not determine the type of SQL operation. Please provide a more specific description."
+            sql = "-- Unable to generate SQL from the given description\n-- Please provide more specific requirements\n-- Example: 'find all users' or 'get customer information'"
+            explanation = "Could not determine the type of SQL operation. Please provide a more specific description that includes keywords like 'find', 'get', 'show', or 'select'."
         
         return {
             'success': True,
