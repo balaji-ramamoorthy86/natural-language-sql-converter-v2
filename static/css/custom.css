@@ -542,3 +542,216 @@ body:not(.modal-open) {
 .modal-backdrop.fade:not(.show) {
     display: none !important;
 }
+
+/* AI Analysis Results styling for better visibility */
+#analysisResults {
+    background-color: var(--bs-gray-900);
+    border: 1px solid var(--bs-gray-700);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    min-height: 200px;
+    color: #e9ecef;
+}
+
+#analysisResults .text-muted {
+    color: #adb5bd !important;
+}
+
+#analysisResults .table {
+    color: #e9ecef;
+    background-color: transparent;
+}
+
+#analysisResults .table th {
+    color: #ffffff;
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-600);
+}
+
+#analysisResults .table td {
+    color: #e9ecef;
+    border-color: var(--bs-gray-700);
+}
+
+#analysisResults .badge {
+    color: #000;
+    font-weight: 600;
+}
+
+#analysisResults .alert {
+    color: inherit;
+}
+
+#analysisResults .alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: rgba(13, 202, 240, 0.3);
+    color: #b6effb;
+}
+
+#analysisResults .alert-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: rgba(25, 135, 84, 0.3);
+    color: #badbcc;
+}
+
+#analysisResults .alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffecb5;
+}
+
+#analysisResults .card {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-600);
+    color: #e9ecef;
+}
+
+#analysisResults .card-header {
+    background-color: var(--bs-gray-700);
+    border-color: var(--bs-gray-600);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+#analysisResults .list-group-item {
+    background-color: var(--bs-gray-800);
+    border-color: var(--bs-gray-700);
+    color: #e9ecef;
+}
+
+#analysisResults .btn {
+    margin: 0.25rem;
+}
+
+/* Light theme overrides for analysis results */
+body.light-theme #analysisResults {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+    color: #212529;
+}
+
+body.light-theme #analysisResults .text-muted {
+    color: #6c757d !important;
+}
+
+body.light-theme #analysisResults .table {
+    color: #212529;
+}
+
+body.light-theme #analysisResults .table th {
+    color: #212529;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+body.light-theme #analysisResults .table td {
+    color: #212529;
+    border-color: #dee2e6;
+}
+
+body.light-theme #analysisResults .card {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+    color: #212529;
+}
+
+body.light-theme #analysisResults .card-header {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #212529;
+}
+
+body.light-theme #analysisResults .list-group-item {
+    background-color: #ffffff;
+    border-color: #dee2e6;
+    color: #212529;
+}
+
+body.light-theme #analysisResults .alert-info {
+    background-color: #cff4fc;
+    border-color: #b6effb;
+    color: #055160;
+}
+
+body.light-theme #analysisResults .alert-success {
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+    color: #0f5132;
+}
+
+body.light-theme #analysisResults .alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffecb5;
+    color: #664d03;
+}
+
+/* Connection test results styling */
+#connectionTestResult {
+    margin-top: 1rem;
+}
+
+#connectionTestResult .alert {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+
+/* Modal headers for better visibility */
+.modal-body h6 {
+    color: #ffffff;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--bs-gray-700);
+}
+
+body.light-theme .modal-body h6 {
+    color: #212529;
+    border-bottom-color: #dee2e6;
+}
+
+/* Ensure all text in analysis results is visible */
+#analysisResults p,
+#analysisResults div,
+#analysisResults span,
+#analysisResults small {
+    color: inherit;
+}
+
+#analysisResults .text-white {
+    color: #ffffff !important;
+}
+
+body.light-theme #analysisResults .text-white {
+    color: #212529 !important;
+}
+
+/* Loading state for analysis results */
+#analysisResults .spinner-border {
+    color: #0dcaf0;
+}
+
+#analysisResults .text-center {
+    color: #e9ecef;
+}
+
+body.light-theme #analysisResults .text-center {
+    color: #212529;
+}
+
+/* Empty state styling */
+#analysisResults.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+#analysisResults.empty-state::before {
+    content: "📊";
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+}
