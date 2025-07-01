@@ -1,5 +1,107 @@
 /* Custom styles for the Natural Language to SQL Converter - Updated 2025-01-01 */
 
+/* Theme Transition */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Light Theme Overrides */
+body.light-theme {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+body.light-theme .navbar {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+}
+
+body.light-theme .navbar-brand,
+body.light-theme .nav-link {
+    color: #212529 !important;
+}
+
+body.light-theme .btn-outline-light {
+    color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+body.light-theme .btn-outline-light:hover {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+body.light-theme .card {
+    background-color: #ffffff !important;
+    border-color: #dee2e6 !important;
+}
+
+body.light-theme .card-header {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    color: #212529 !important;
+}
+
+body.light-theme .bg-primary {
+    background-color: #0d6efd !important;
+}
+
+body.light-theme .bg-dark {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+body.light-theme .text-muted {
+    color: #6c757d !important;
+}
+
+body.light-theme .form-control,
+body.light-theme .form-select {
+    background-color: #ffffff !important;
+    border-color: #ced4da !important;
+    color: #212529 !important;
+}
+
+body.light-theme .form-control:focus,
+body.light-theme .form-select:focus {
+    background-color: #ffffff !important;
+    border-color: #86b7fe !important;
+    color: #212529 !important;
+}
+
+body.light-theme .btn-primary {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+body.light-theme .btn-secondary {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+body.light-theme .alert-danger {
+    background-color: #f8d7da !important;
+    border-color: #f5c2c7 !important;
+    color: #842029 !important;
+}
+
+body.light-theme .alert-success {
+    background-color: #d1e7dd !important;
+    border-color: #badbcc !important;
+    color: #0f5132 !important;
+}
+
+body.light-theme pre {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+body.light-theme code {
+    background-color: #f8f9fa !important;
+    color: #e83e8c !important;
+}
+
 /* Ensure consistent height for cards */
 .card {
     transition: transform 0.2s ease-in-out;
