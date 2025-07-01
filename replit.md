@@ -28,9 +28,10 @@ The application follows a layered architecture pattern with clear separation of 
    - Includes fallback mechanisms for different OpenAI libraries
 
 2. **SchemaService** (`services/schema_service.py`)
-   - Manages database schema information
-   - Provides context for SQL generation
-   - Includes sample e-commerce schema for demonstration
+   - Manages database schema information from JSON files
+   - Dynamically loads schemas from `services/schemas/` directory
+   - Each JSON file automatically creates a dropdown option
+   - Supports both JSON file-based and live SQL Server schema discovery
 
 3. **SQLValidator** (`services/sql_validator.py`)
    - Validates generated SQL queries
@@ -51,8 +52,13 @@ The application follows a layered architecture pattern with clear separation of 
 
 ### Data Models
 1. **QueryHistory** - Stores conversion history and results
-2. **DatabaseSchema** - Maintains database schema metadata
-3. **UserFeedback** - Collects user ratings and feedback
+2. **UserFeedback** - Collects user ratings and feedback
+
+### Schema Management
+- **JSON-based Schema Storage**: Schemas stored in `services/schemas/` directory
+- **Dynamic Discovery**: Each `.json` file automatically appears in dropdown
+- **No Hardcoded Data**: All schema definitions externalized to JSON files
+- **Template System**: Includes template and example schemas for reference
 
 ### Frontend Components
 - Interactive form for natural language input
@@ -126,6 +132,18 @@ The application follows a layered architecture pattern with clear separation of 
   - Added ConnectionAPIService for fetching connection strings from external API
   - Users select databases from dropdown, connection details retrieved automatically
   - Maintains security by not exposing connection credentials in the interface
+- July 1, 2025. Fixed critical application stability issues:
+  - Resolved fallback SQL generation service causing mixed success/error messages
+  - Fixed undefined variable errors in Azure OpenAI service fallback implementation
+  - Implemented comprehensive cache-busting for CSS/JavaScript files to prevent 304 status codes
+  - Added proper Flask cache control configuration for development environment
+  - Application now successfully generates SQL queries without showing concurrent errors
+- July 1, 2025. Implemented JSON-based schema management system:
+  - Replaced hardcoded schema definitions with external JSON files
+  - Created dynamic schema discovery from services/schemas/ directory
+  - Each JSON file automatically creates dropdown option without code changes
+  - Added comprehensive documentation and template files for schema format
+  - Simplified schema addition process - just add JSON file to schemas directory
 
 ## User Preferences
 
