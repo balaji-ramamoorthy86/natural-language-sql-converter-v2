@@ -10,6 +10,67 @@ class SQLConverter {
         if (typeof Prism !== 'undefined') {
             Prism.highlightAll();
         }
+        
+        // Set up scroll restoration on page visibility change
+        this.setupScrollRestoration();
+    }
+    
+    setupScrollRestoration() {
+        // Restore scroll on visibility change (tab switching)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.restoreScrolling();
+            }
+        });
+        
+        // Restore scroll on focus
+        window.addEventListener('focus', () => {
+            this.restoreScrolling();
+        });
+        
+        // Add click handler to restore scrolling when clicking anywhere
+        document.addEventListener('click', (e) => {
+            // Only restore if not clicking on modal content
+            if (!e.target.closest('.modal-content')) {
+                setTimeout(() => this.restoreScrolling(), 100);
+            }
+        });
+        
+        // Add keyboard shortcut (Ctrl+Shift+S) to restore scrolling
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                this.restoreScrolling();
+                this.showSuccess('Scroll restored manually');
+            }
+        });
+    }
+    
+    restoreScrolling() {
+        try {
+            // Remove modal-open class
+            document.body.classList.remove('modal-open');
+            
+            // Remove all overflow restrictions
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            document.documentElement.style.removeProperty('overflow');
+            
+            // Explicitly set to allow scrolling
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            
+            // Remove any stuck modal backdrops
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                if (!backdrop.closest('.modal.show')) {
+                    backdrop.remove();
+                }
+            });
+            
+            console.log('Scroll restored');
+        } catch (error) {
+            console.warn('Error restoring scroll:', error);
+        }
     }
 
     initializeEventListeners() {
@@ -232,23 +293,27 @@ class SQLConverter {
                     modalElement.removeAttribute('aria-modal');
                 }
                 
-                // Remove any stuck backdrops immediately and with delay
+                // Remove any stuck backdrops and restore scrolling
                 const removeBackdrops = () => {
                     document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
                     document.body.classList.remove('modal-open');
                     document.body.style.removeProperty('padding-right');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.overflow = '';
+                    document.documentElement.style.removeProperty('overflow');
+                    document.documentElement.style.overflow = '';
                 };
                 
                 removeBackdrops();
                 setTimeout(removeBackdrops, 50);
                 setTimeout(removeBackdrops, 200);
+                setTimeout(removeBackdrops, 500); // Extra cleanup
             }
         } catch (error) {
             console.error('Error managing loading state:', error);
-            // Emergency fallback - force remove all modal elements
+            // Emergency fallback - force remove all modal elements and restore scroll
             if (!show) {
-                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                document.body.classList.remove('modal-open');
+                this.restoreScrolling();
             }
         }
     }
