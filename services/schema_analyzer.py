@@ -6,9 +6,22 @@ Analyzes database schemas with cryptic names and generates meaningful descriptio
 import logging
 import os
 from typing import Dict, List, Any, Optional
-import pyodbc
-import psycopg2
-from psycopg2.extras import RealDictCursor
+
+try:
+    import pyodbc
+    PYODBC_AVAILABLE = True
+except ImportError:
+    PYODBC_AVAILABLE = False
+    pyodbc = None
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+    psycopg2 = None
+    RealDictCursor = None
 import json
 import re
 from collections import Counter
