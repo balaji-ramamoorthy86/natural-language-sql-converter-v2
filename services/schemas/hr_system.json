@@ -1,0 +1,206 @@
+{
+  "schema_name": "hr_system",
+  "description": "Human Resources management database for employee and payroll tracking",
+  "tables": {
+    "employees": {
+      "description": "Employee information and records",
+      "columns": {
+        "employee_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique employee identifier"
+        },
+        "first_name": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Employee first name"
+        },
+        "last_name": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Employee last name"
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": false,
+          "description": "Work email address"
+        },
+        "phone": {
+          "type": "varchar(20)",
+          "nullable": true,
+          "description": "Contact phone number"
+        },
+        "hire_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Date employee was hired"
+        },
+        "department_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "departments",
+            "column": "department_id"
+          },
+          "description": "Department reference"
+        },
+        "position": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "Job title/position"
+        },
+        "salary": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Annual salary"
+        },
+        "is_active": {
+          "type": "bit",
+          "nullable": false,
+          "description": "Whether employee is currently active"
+        }
+      }
+    },
+    "departments": {
+      "description": "Company departments and organizational structure",
+      "columns": {
+        "department_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique department identifier"
+        },
+        "department_name": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "Department name"
+        },
+        "manager_id": {
+          "type": "int",
+          "nullable": true,
+          "foreign_key": {
+            "table": "employees",
+            "column": "employee_id"
+          },
+          "description": "Department manager reference"
+        },
+        "budget": {
+          "type": "decimal(12,2)",
+          "nullable": true,
+          "description": "Annual department budget"
+        },
+        "location": {
+          "type": "varchar(100)",
+          "nullable": true,
+          "description": "Department physical location"
+        }
+      }
+    },
+    "payroll": {
+      "description": "Payroll records and salary payments",
+      "columns": {
+        "payroll_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique payroll record identifier"
+        },
+        "employee_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "employees",
+            "column": "employee_id"
+          },
+          "description": "Employee reference"
+        },
+        "pay_period_start": {
+          "type": "date",
+          "nullable": false,
+          "description": "Start date of pay period"
+        },
+        "pay_period_end": {
+          "type": "date",
+          "nullable": false,
+          "description": "End date of pay period"
+        },
+        "gross_pay": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Gross pay amount before deductions"
+        },
+        "tax_deductions": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Total tax deductions"
+        },
+        "other_deductions": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Other deductions (insurance, 401k, etc.)"
+        },
+        "net_pay": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Net pay after all deductions"
+        },
+        "pay_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Date payment was processed"
+        }
+      }
+    },
+    "time_tracking": {
+      "description": "Employee time tracking and attendance",
+      "columns": {
+        "record_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique time record identifier"
+        },
+        "employee_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "employees",
+            "column": "employee_id"
+          },
+          "description": "Employee reference"
+        },
+        "work_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Date of work"
+        },
+        "clock_in": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Clock in time"
+        },
+        "clock_out": {
+          "type": "datetime",
+          "nullable": true,
+          "description": "Clock out time"
+        },
+        "hours_worked": {
+          "type": "decimal(4,2)",
+          "nullable": true,
+          "description": "Total hours worked"
+        },
+        "overtime_hours": {
+          "type": "decimal(4,2)",
+          "nullable": true,
+          "description": "Overtime hours"
+        },
+        "break_time": {
+          "type": "int",
+          "nullable": true,
+          "description": "Break time in minutes"
+        }
+      }
+    }
+  }
+}
