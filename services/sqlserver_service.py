@@ -366,7 +366,8 @@ class SQLServerService:
     
     def _build_connection_string(self, params: Dict[str, str]) -> str:
         """Build SQL Server connection string from parameters"""
-        server = params.get('server', 'localhost')
+        # Handle different parameter naming conventions
+        server = params.get('server', params.get('host', 'localhost'))
         database = params.get('database', 'master')
         username = params.get('username', '')
         password = params.get('password', '')
@@ -376,8 +377,8 @@ class SQLServerService:
         encrypt = params.get('encrypt', 'yes')
         timeout = params.get('timeout', '30')
         
-        # Handle different authentication methods
-        auth_method = params.get('auth_method', 'sql')
+        # Handle different authentication methods (support both auth_method and auth_type)
+        auth_method = params.get('auth_method', params.get('auth_type', 'sql'))
         
         if auth_method == 'windows':
             # Windows Authentication
