@@ -1,0 +1,87 @@
+{
+  "schema_name": "template",
+  "description": "Template schema showing the JSON format for adding new database schemas",
+  "tables": {
+    "example_table": {
+      "description": "Example table showing all supported column types and relationships",
+      "columns": {
+        "id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Primary key column"
+        },
+        "name": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "Name field - required text"
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": true,
+          "description": "Email field - optional text"
+        },
+        "age": {
+          "type": "int",
+          "nullable": true,
+          "description": "Age field - optional integer"
+        },
+        "salary": {
+          "type": "decimal(10,2)",
+          "nullable": true,
+          "description": "Salary field - optional decimal with precision"
+        },
+        "is_active": {
+          "type": "bit",
+          "nullable": false,
+          "description": "Boolean field for active status"
+        },
+        "created_at": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Timestamp field for creation date"
+        },
+        "birth_date": {
+          "type": "date",
+          "nullable": true,
+          "description": "Date field for birth date"
+        },
+        "category_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "categories",
+            "column": "id"
+          },
+          "description": "Foreign key referencing categories table"
+        },
+        "notes": {
+          "type": "text",
+          "nullable": true,
+          "description": "Large text field for notes"
+        }
+      }
+    },
+    "categories": {
+      "description": "Example categories table for foreign key relationship",
+      "columns": {
+        "id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Category identifier"
+        },
+        "name": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Category name"
+        },
+        "description": {
+          "type": "text",
+          "nullable": true,
+          "description": "Category description"
+        }
+      }
+    }
+  }
+}
