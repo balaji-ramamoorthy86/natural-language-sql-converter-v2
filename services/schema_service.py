@@ -1,5 +1,7 @@
+import json
 import os
 import logging
+from pathlib import Path
 from typing import Dict, List, Any
 
 try:
@@ -10,298 +12,268 @@ except ImportError:
     pyodbc = None
 
 class SchemaService:
-    """Service for managing database schema information"""
+    """Service for managing database schema information from JSON files"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-        # SQL Server connection configuration
+        # Path to schema JSON files
+        self.schemas_dir = Path(__file__).parent / 'schemas'
+        
+        # SQL Server connection configuration (for optional live discovery)
         self.server = os.getenv('SQL_SERVER_HOST', 'localhost')
         self.database = os.getenv('SQL_SERVER_DATABASE', 'master')
         self.username = os.getenv('SQL_SERVER_USERNAME', '')
         self.password = os.getenv('SQL_SERVER_PASSWORD', '')
         self.driver = os.getenv('SQL_SERVER_DRIVER', '{ODBC Driver 17 for SQL Server}')
         
-        # Sample schema data will be initialized when first accessed
+        # Cache for loaded schemas
+        self._schema_cache = {}
+        
+        # Ensure schemas directory exists
+        self.schemas_dir.mkdir(exist_ok=True)
     
-    def _initialize_sample_schemas(self):
-        """Initialize sample database schemas for demonstration"""
+    def _load_schema_from_json(self, schema_name: str) -> Dict[str, Any]:
+        """Load schema from JSON file"""
+        json_file = self.schemas_dir / f"{schema_name}.json"
+        
+        if not json_file.exists():
+            self.logger.warning(f"Schema file not found: {json_file}")
+            return {}
+        
         try:
-            from app import db
-            from models import DatabaseSchema
+            with open(json_file, 'r', encoding='utf-8') as f:
+                schema_data = json.load(f)
             
-            # Check if we already have the ecommerce schema
-            existing_schema = DatabaseSchema.query.filter_by(schema_name='ecommerce').first()
-            if existing_schema:
-                return
-            
-            # Sample e-commerce schema
-            sample_schemas = [
-                # Users table
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'users',
-                    'column_name': 'user_id',
-                    'data_type': 'int',
-                    'is_nullable': False,
-                    'is_primary_key': True,
-                    'column_description': 'Unique identifier for users'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'users',
-                    'column_name': 'username',
-                    'data_type': 'varchar(50)',
-                    'is_nullable': False,
-                    'column_description': 'User login name'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'users',
-                    'column_name': 'email',
-                    'data_type': 'varchar(255)',
-                    'is_nullable': False,
-                    'column_description': 'User email address'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'users',
-                    'column_name': 'created_at',
-                    'data_type': 'datetime',
-                    'is_nullable': False,
-                    'column_description': 'Account creation timestamp'
-                },
-                
-                # Products table
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'products',
-                    'column_name': 'product_id',
-                    'data_type': 'int',
-                    'is_nullable': False,
-                    'is_primary_key': True,
-                    'column_description': 'Unique identifier for products'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'products',
-                    'column_name': 'product_name',
-                    'data_type': 'varchar(255)',
-                    'is_nullable': False,
-                    'column_description': 'Product name'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'products',
-                    'column_name': 'price',
-                    'data_type': 'decimal(10,2)',
-                    'is_nullable': False,
-                    'column_description': 'Product price'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'products',
-                    'column_name': 'category_id',
-                    'data_type': 'int',
-                    'is_nullable': True,
-                    'is_foreign_key': True,
-                    'referenced_table': 'categories',
-                    'referenced_column': 'category_id',
-                    'column_description': 'Product category reference'
-                },
-                
-                # Orders table
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'orders',
-                    'column_name': 'order_id',
-                    'data_type': 'int',
-                    'is_nullable': False,
-                    'is_primary_key': True,
-                    'column_description': 'Unique identifier for orders'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'orders',
-                    'column_name': 'user_id',
-                    'data_type': 'int',
-                    'is_nullable': False,
-                    'is_foreign_key': True,
-                    'referenced_table': 'users',
-                    'referenced_column': 'user_id',
-                    'column_description': 'Customer reference'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'orders',
-                    'column_name': 'order_date',
-                    'data_type': 'datetime',
-                    'is_nullable': False,
-                    'column_description': 'Order creation date'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'orders',
-                    'column_name': 'total_amount',
-                    'data_type': 'decimal(10,2)',
-                    'is_nullable': False,
-                    'column_description': 'Total order amount'
-                },
-                
-                # Categories table
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'categories',
-                    'column_name': 'category_id',
-                    'data_type': 'int',
-                    'is_nullable': False,
-                    'is_primary_key': True,
-                    'column_description': 'Unique identifier for categories'
-                },
-                {
-                    'schema_name': 'ecommerce',
-                    'table_name': 'categories',
-                    'column_name': 'category_name',
-                    'data_type': 'varchar(100)',
-                    'is_nullable': False,
-                    'column_description': 'Category name'
-                }
-            ]
-            
-            # Add sample schemas to database
-            for schema_data in sample_schemas:
-                schema_entry = DatabaseSchema(**schema_data)
-                db.session.add(schema_entry)
-            
-            db.session.commit()
-            self.logger.info("Sample database schemas initialized")
+            self.logger.info(f"Loaded schema '{schema_name}' from JSON file")
+            return schema_data
             
         except Exception as e:
-            self.logger.error(f"Error initializing sample schemas: {str(e)}")
-            # Try to rollback if db is available
-            try:
-                from app import db
-                db.session.rollback()
-            except:
-                pass
+            self.logger.error(f"Error loading schema from {json_file}: {str(e)}")
+            return {}
+    
+    def _discover_json_schemas(self) -> List[str]:
+        """Discover all available JSON schema files"""
+        try:
+            json_files = list(self.schemas_dir.glob("*.json"))
+            schema_names = [f.stem for f in json_files]
+            self.logger.info(f"Discovered {len(schema_names)} JSON schema files: {schema_names}")
+            return sorted(schema_names)
+        except Exception as e:
+            self.logger.error(f"Error discovering JSON schemas: {str(e)}")
+            return []
     
     def get_available_schemas(self) -> List[str]:
-        """Get list of available database schemas"""
+        """Get list of available database schemas from JSON files"""
         try:
-            # Try to connect to actual SQL Server
-            schemas = self._get_schemas_from_sqlserver()
-            if schemas:
-                return schemas
+            # First try to get schemas from SQL Server if configured
+            sql_schemas = self._get_schemas_from_sqlserver()
+            if sql_schemas:
+                self.logger.info(f"Found {len(sql_schemas)} schemas from SQL Server")
+                return sql_schemas
             
-            # Fallback to stored schema information
-            try:
-                from app import db
-                from models import DatabaseSchema
-                
-                # Initialize sample schemas if needed
-                existing_schemas = DatabaseSchema.query.filter_by(schema_name='ecommerce').first()
-                if not existing_schemas:
-                    self._initialize_sample_schemas()
-                
-                stored_schemas = db.session.query(DatabaseSchema.schema_name).distinct().all()
-                return [schema[0] for schema in stored_schemas]
-            except:
-                return ['ecommerce']  # Default fallback
+            # Fallback to JSON file discovery
+            json_schemas = self._discover_json_schemas()
+            self.logger.info(f"Using {len(json_schemas)} schemas from JSON files")
+            return json_schemas
             
         except Exception as e:
             self.logger.error(f"Error getting available schemas: {str(e)}")
-            return ['ecommerce']  # Default fallback
+            return []
     
     def get_schema_details(self, schema_name: str) -> Dict[str, Any]:
         """Get detailed schema information for a specific schema"""
         try:
-            # Try to get from actual SQL Server first
-            details = self._get_schema_details_from_sqlserver(schema_name)
-            if details:
-                return details
+            # Check cache first
+            if schema_name in self._schema_cache:
+                return self._schema_cache[schema_name]
             
-            # Fallback to stored schema information
-            try:
-                from models import DatabaseSchema
-                schema_entries = DatabaseSchema.query.filter_by(schema_name=schema_name).all()
-                
-                if not schema_entries:
-                    return {}
-                
-                tables = {}
-                for entry in schema_entries:
-                    if entry.table_name not in tables:
-                        tables[entry.table_name] = {
-                            'columns': [],
-                            'primary_keys': [],
-                            'foreign_keys': []
-                        }
-                    
-                    column_info = {
-                        'name': entry.column_name,
-                        'type': entry.data_type,
-                        'nullable': entry.is_nullable,
-                        'description': entry.column_description
-                    }
-                    
-                    tables[entry.table_name]['columns'].append(column_info)
-                    
-                    if entry.is_primary_key:
-                        tables[entry.table_name]['primary_keys'].append(entry.column_name)
-                    
-                    if entry.is_foreign_key:
-                        tables[entry.table_name]['foreign_keys'].append({
-                            'column': entry.column_name,
-                            'referenced_table': entry.referenced_table,
-                            'referenced_column': entry.referenced_column
-                        })
-                
-                return {
-                    'schema_name': schema_name,
-                    'tables': tables
-                }
-            except:
-                return {}
+            # Try to get from SQL Server first
+            if self.server and self.server != 'localhost':
+                sql_details = self._get_schema_details_from_sqlserver(schema_name)
+                if sql_details:
+                    self._schema_cache[schema_name] = sql_details
+                    return sql_details
+            
+            # Fallback to JSON file
+            json_schema = self._load_schema_from_json(schema_name)
+            if json_schema:
+                # Convert JSON format to expected API format
+                formatted_schema = self._format_json_schema(json_schema)
+                self._schema_cache[schema_name] = formatted_schema
+                return formatted_schema
+            
+            return {}
             
         except Exception as e:
-            self.logger.error(f"Error getting schema details: {str(e)}")
+            self.logger.error(f"Error getting schema details for '{schema_name}': {str(e)}")
+            return {}
+    
+    def _format_json_schema(self, json_schema: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert JSON schema format to API format"""
+        try:
+            formatted = {
+                'schema_name': json_schema.get('schema_name', ''),
+                'tables': {}
+            }
+            
+            tables = json_schema.get('tables', {})
+            for table_name, table_info in tables.items():
+                columns = []
+                primary_keys = []
+                foreign_keys = []
+                
+                table_columns = table_info.get('columns', {})
+                for col_name, col_info in table_columns.items():
+                    column = {
+                        'name': col_name,
+                        'type': col_info.get('type', 'varchar'),
+                        'nullable': col_info.get('nullable', True),
+                        'description': col_info.get('description', '')
+                    }
+                    columns.append(column)
+                    
+                    # Track primary keys
+                    if col_info.get('primary_key', False):
+                        primary_keys.append(col_name)
+                    
+                    # Track foreign keys
+                    if 'foreign_key' in col_info:
+                        fk_info = col_info['foreign_key']
+                        foreign_keys.append({
+                            'column': col_name,
+                            'referenced_table': fk_info.get('table', ''),
+                            'referenced_column': fk_info.get('column', '')
+                        })
+                
+                formatted['tables'][table_name] = {
+                    'columns': columns,
+                    'primary_keys': primary_keys,
+                    'foreign_keys': foreign_keys
+                }
+            
+            return formatted
+            
+        except Exception as e:
+            self.logger.error(f"Error formatting JSON schema: {str(e)}")
             return {}
     
     def get_schema_context(self, schema_name: str) -> str:
         """Get formatted schema context for AI prompt"""
         try:
             schema_details = self.get_schema_details(schema_name)
-            
-            if not schema_details or 'tables' not in schema_details:
+            if not schema_details:
                 return ""
             
-            context = f"Database Schema: {schema_name}\n\n"
+            context_lines = [f"Database Schema: {schema_name}"]
+            context_lines.append("=" * 50)
             
-            for table_name, table_info in schema_details['tables'].items():
-                context += f"Table: {table_name}\n"
-                context += "Columns:\n"
+            tables = schema_details.get('tables', {})
+            for table_name, table_info in tables.items():
+                context_lines.append(f"\nTable: {table_name}")
+                context_lines.append("-" * 30)
                 
-                for column in table_info['columns']:
-                    nullable = "NULL" if column['nullable'] else "NOT NULL"
-                    description = f" -- {column['description']}" if column['description'] else ""
-                    context += f"  - {column['name']} ({column['type']}) {nullable}{description}\n"
+                columns = table_info.get('columns', [])
+                for column in columns:
+                    col_line = f"  {column['name']} ({column['type']})"
+                    if not column.get('nullable', True):
+                        col_line += " NOT NULL"
+                    if column.get('description'):
+                        col_line += f" - {column['description']}"
+                    context_lines.append(col_line)
                 
-                if table_info['primary_keys']:
-                    context += f"Primary Key(s): {', '.join(table_info['primary_keys'])}\n"
+                # Add primary key info
+                primary_keys = table_info.get('primary_keys', [])
+                if primary_keys:
+                    context_lines.append(f"  PRIMARY KEY: {', '.join(primary_keys)}")
                 
-                if table_info['foreign_keys']:
-                    context += "Foreign Keys:\n"
-                    for fk in table_info['foreign_keys']:
-                        context += f"  - {fk['column']} -> {fk['referenced_table']}.{fk['referenced_column']}\n"
-                
-                context += "\n"
+                # Add foreign key info
+                foreign_keys = table_info.get('foreign_keys', [])
+                for fk in foreign_keys:
+                    context_lines.append(
+                        f"  FOREIGN KEY: {fk['column']} -> {fk['referenced_table']}.{fk['referenced_column']}"
+                    )
             
-            return context
+            return "\n".join(context_lines)
             
         except Exception as e:
             self.logger.error(f"Error generating schema context: {str(e)}")
             return ""
     
+    def add_schema_from_json_file(self, file_path: str, schema_name: str = None) -> bool:
+        """Add a new schema from an uploaded JSON file"""
+        try:
+            source_path = Path(file_path)
+            if not source_path.exists():
+                self.logger.error(f"Source JSON file not found: {file_path}")
+                return False
+            
+            # Determine schema name
+            if not schema_name:
+                schema_name = source_path.stem
+            
+            # Validate JSON format
+            with open(source_path, 'r', encoding='utf-8') as f:
+                schema_data = json.load(f)
+            
+            if 'schema_name' not in schema_data or 'tables' not in schema_data:
+                self.logger.error("Invalid JSON schema format. Must contain 'schema_name' and 'tables'")
+                return False
+            
+            # Copy to schemas directory
+            target_path = self.schemas_dir / f"{schema_name}.json"
+            with open(target_path, 'w', encoding='utf-8') as f:
+                json.dump(schema_data, f, indent=2, ensure_ascii=False)
+            
+            # Clear cache for this schema
+            if schema_name in self._schema_cache:
+                del self._schema_cache[schema_name]
+            
+            self.logger.info(f"Successfully added schema '{schema_name}' from JSON file")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error adding schema from JSON file: {str(e)}")
+            return False
+    
+    def remove_schema(self, schema_name: str) -> bool:
+        """Remove a schema by deleting its JSON file"""
+        try:
+            json_file = self.schemas_dir / f"{schema_name}.json"
+            if json_file.exists():
+                json_file.unlink()
+                
+                # Clear from cache
+                if schema_name in self._schema_cache:
+                    del self._schema_cache[schema_name]
+                
+                self.logger.info(f"Successfully removed schema '{schema_name}'")
+                return True
+            else:
+                self.logger.warning(f"Schema file not found: {json_file}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error removing schema '{schema_name}': {str(e)}")
+            return False
+    
+    def refresh_schema_cache(self, schema_name: str = None):
+        """Refresh the cached schema information"""
+        try:
+            if schema_name:
+                # Clear specific schema from cache
+                if schema_name in self._schema_cache:
+                    del self._schema_cache[schema_name]
+                    self.logger.info(f"Cleared cache for schema '{schema_name}'")
+            else:
+                # Clear entire cache
+                self._schema_cache.clear()
+                self.logger.info("Cleared entire schema cache")
+                
+        except Exception as e:
+            self.logger.error(f"Error refreshing schema cache: {str(e)}")
+    
+    # Keep SQL Server methods for live discovery (optional)
     def _get_connection_string(self) -> str:
         """Build SQL Server connection string"""
         if self.username and self.password:
@@ -312,7 +284,7 @@ class SchemaService:
     def _get_schemas_from_sqlserver(self) -> List[str]:
         """Get schemas directly from SQL Server"""
         try:
-            if not self.server or self.server == 'localhost':
+            if not PYODBC_AVAILABLE or not self.server or self.server == 'localhost':
                 return []  # Skip if no real server configured
             
             conn_str = self._get_connection_string()
@@ -329,7 +301,7 @@ class SchemaService:
     def _get_schema_details_from_sqlserver(self, schema_name: str) -> Dict[str, Any]:
         """Get schema details directly from SQL Server"""
         try:
-            if not self.server or self.server == 'localhost':
+            if not PYODBC_AVAILABLE or not self.server or self.server == 'localhost':
                 return {}  # Skip if no real server configured
             
             conn_str = self._get_connection_string()
@@ -339,27 +311,47 @@ class SchemaService:
                 # Query to get table and column information
                 query = """
                 SELECT 
-                    t.TABLE_SCHEMA,
                     t.TABLE_NAME,
                     c.COLUMN_NAME,
                     c.DATA_TYPE,
                     c.IS_NULLABLE,
-                    CASE WHEN tc.CONSTRAINT_TYPE = 'PRIMARY KEY' THEN 1 ELSE 0 END as IS_PRIMARY_KEY,
-                    CASE WHEN tc.CONSTRAINT_TYPE = 'FOREIGN KEY' THEN 1 ELSE 0 END as IS_FOREIGN_KEY
+                    c.COLUMN_DEFAULT,
+                    CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END as IS_PRIMARY_KEY,
+                    fk.REFERENCED_TABLE_NAME,
+                    fk.REFERENCED_COLUMN_NAME
                 FROM INFORMATION_SCHEMA.TABLES t
-                JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_NAME = c.TABLE_NAME
-                LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON c.COLUMN_NAME = kcu.COLUMN_NAME AND c.TABLE_NAME = kcu.TABLE_NAME
-                LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-                WHERE t.TABLE_CATALOG = ?
+                LEFT JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_NAME = c.TABLE_NAME
+                LEFT JOIN (
+                    SELECT ku.TABLE_NAME, ku.COLUMN_NAME
+                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+                    INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS ku
+                        ON tc.CONSTRAINT_TYPE = 'PRIMARY KEY' 
+                        AND tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                ) pk ON c.TABLE_NAME = pk.TABLE_NAME AND c.COLUMN_NAME = pk.COLUMN_NAME
+                LEFT JOIN (
+                    SELECT 
+                        ku.TABLE_NAME,
+                        ku.COLUMN_NAME,
+                        ku.REFERENCED_TABLE_NAME,
+                        ku.REFERENCED_COLUMN_NAME
+                    FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS rc
+                    INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS ku
+                        ON rc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                ) fk ON c.TABLE_NAME = fk.TABLE_NAME AND c.COLUMN_NAME = fk.COLUMN_NAME
+                WHERE t.TABLE_CATALOG = ? AND t.TABLE_TYPE = 'BASE TABLE'
                 ORDER BY t.TABLE_NAME, c.ORDINAL_POSITION
                 """
                 
-                cursor.execute(query, schema_name)
+                cursor.execute(query, (schema_name,))
                 rows = cursor.fetchall()
                 
+                if not rows:
+                    return {}
+                
+                # Process results into schema format
                 tables = {}
                 for row in rows:
-                    table_name = row[1]
+                    table_name = row.TABLE_NAME
                     if table_name not in tables:
                         tables[table_name] = {
                             'columns': [],
@@ -367,17 +359,25 @@ class SchemaService:
                             'foreign_keys': []
                         }
                     
-                    column_info = {
-                        'name': row[2],
-                        'type': row[3],
-                        'nullable': row[4] == 'YES',
-                        'description': ''
-                    }
-                    
-                    tables[table_name]['columns'].append(column_info)
-                    
-                    if row[5]:  # IS_PRIMARY_KEY
-                        tables[table_name]['primary_keys'].append(row[2])
+                    if row.COLUMN_NAME:  # Skip if no column info
+                        column_info = {
+                            'name': row.COLUMN_NAME,
+                            'type': row.DATA_TYPE,
+                            'nullable': row.IS_NULLABLE == 'YES',
+                            'description': f"{row.COLUMN_NAME} column"
+                        }
+                        tables[table_name]['columns'].append(column_info)
+                        
+                        if row.IS_PRIMARY_KEY:
+                            tables[table_name]['primary_keys'].append(row.COLUMN_NAME)
+                        
+                        if row.REFERENCED_TABLE_NAME:
+                            fk_info = {
+                                'column': row.COLUMN_NAME,
+                                'referenced_table': row.REFERENCED_TABLE_NAME,
+                                'referenced_column': row.REFERENCED_COLUMN_NAME
+                            }
+                            tables[table_name]['foreign_keys'].append(fk_info)
                 
                 return {
                     'schema_name': schema_name,
@@ -387,32 +387,3 @@ class SchemaService:
         except Exception as e:
             self.logger.warning(f"Could not get schema details from SQL Server: {str(e)}")
             return {}
-    
-    def refresh_schema_cache(self, schema_name: str = None):
-        """Refresh the cached schema information"""
-        try:
-            from app import db
-            from models import DatabaseSchema
-            
-            if schema_name:
-                # Refresh specific schema
-                DatabaseSchema.query.filter_by(schema_name=schema_name).delete()
-            else:
-                # Refresh all schemas
-                DatabaseSchema.query.delete()
-            
-            db.session.commit()
-            
-            # Re-initialize sample data if no real server
-            if not self.server or self.server == 'localhost':
-                self._initialize_sample_schemas()
-            
-            self.logger.info(f"Schema cache refreshed for: {schema_name or 'all schemas'}")
-            
-        except Exception as e:
-            self.logger.error(f"Error refreshing schema cache: {str(e)}")
-            try:
-                from app import db
-                db.session.rollback()
-            except:
-                pass
