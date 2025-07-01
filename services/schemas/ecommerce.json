@@ -1,0 +1,186 @@
+{
+  "schema_name": "ecommerce",
+  "description": "E-commerce database schema for online retail operations",
+  "tables": {
+    "customers": {
+      "description": "Customer information and contact details",
+      "columns": {
+        "customer_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique customer identifier"
+        },
+        "first_name": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Customer first name"
+        },
+        "last_name": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Customer last name"
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": false,
+          "description": "Customer email address"
+        },
+        "phone": {
+          "type": "varchar(20)",
+          "nullable": true,
+          "description": "Customer phone number"
+        },
+        "created_at": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Account creation timestamp"
+        }
+      }
+    },
+    "products": {
+      "description": "Product catalog with pricing and inventory",
+      "columns": {
+        "product_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique product identifier"
+        },
+        "product_name": {
+          "type": "varchar(255)",
+          "nullable": false,
+          "description": "Product name"
+        },
+        "description": {
+          "type": "text",
+          "nullable": true,
+          "description": "Product description"
+        },
+        "price": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Product price"
+        },
+        "category_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "categories",
+            "column": "category_id"
+          },
+          "description": "Product category reference"
+        },
+        "stock_quantity": {
+          "type": "int",
+          "nullable": false,
+          "description": "Available stock quantity"
+        },
+        "created_at": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Product creation timestamp"
+        }
+      }
+    },
+    "categories": {
+      "description": "Product categories for organization",
+      "columns": {
+        "category_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique category identifier"
+        },
+        "category_name": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "Category name"
+        },
+        "parent_category_id": {
+          "type": "int",
+          "nullable": true,
+          "foreign_key": {
+            "table": "categories",
+            "column": "category_id"
+          },
+          "description": "Parent category for hierarchical organization"
+        }
+      }
+    },
+    "orders": {
+      "description": "Customer orders and order details",
+      "columns": {
+        "order_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique order identifier"
+        },
+        "customer_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "customers",
+            "column": "customer_id"
+          },
+          "description": "Customer who placed the order"
+        },
+        "order_date": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Order placement date"
+        },
+        "total_amount": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Total order amount"
+        },
+        "order_status": {
+          "type": "varchar(20)",
+          "nullable": false,
+          "description": "Order status (pending, shipped, delivered, cancelled)"
+        }
+      }
+    },
+    "order_items": {
+      "description": "Individual items within orders",
+      "columns": {
+        "order_item_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique order item identifier"
+        },
+        "order_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "orders",
+            "column": "order_id"
+          },
+          "description": "Order reference"
+        },
+        "product_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "products",
+            "column": "product_id"
+          },
+          "description": "Product reference"
+        },
+        "quantity": {
+          "type": "int",
+          "nullable": false,
+          "description": "Quantity of product ordered"
+        },
+        "unit_price": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Price per unit at time of order"
+        }
+      }
+    }
+  }
+}
