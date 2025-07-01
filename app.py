@@ -1,5 +1,6 @@
 import os
 import logging
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -9,6 +10,9 @@ from services.sql_validator import SQLValidator
 from services.schema_service import SchemaService
 from services.sqlserver_service import SQLServerService
 from services.connection_api_service import ConnectionAPIService
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
