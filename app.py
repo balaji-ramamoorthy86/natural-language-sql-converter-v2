@@ -250,31 +250,57 @@ def upload_schema():
                 'error': 'Please provide a valid schema name and table definitions'
             }), 400
         
-        # Clear existing schema data for this schema
-        models.DatabaseSchema.query.filter_by(schema_name=schema_name).delete()
+        # Create JSON schema file using the schema service
+        import tempfile
+        import json
         
-        # Add new schema data
+        schema_data = {
+            'schema_name': schema_name,
+            'description': f'Custom schema: {schema_name}',
+            'tables': {}
+        }
+        
+        # Convert the uploaded format to our JSON format
         for table_name, table_info in tables.items():
+            schema_data['tables'][table_name] = {
+                'description': f'Table: {table_name}',
+                'columns': {}
+            }
+            
             for column in table_info.get('columns', []):
-                schema_entry = models.DatabaseSchema(
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    column_name=column['name'],
-                    data_type=column.get('type', 'varchar(255)'),
-                    is_nullable=column.get('nullable', True),
-                    is_primary_key=column.get('is_primary_key', False),
-                    is_foreign_key=column.get('is_foreign_key', False),
-                    referenced_table=column.get('referenced_table'),
-                    referenced_column=column.get('referenced_column'),
-                    column_description=column.get('description', '')
-                )
-                db.session.add(schema_entry)
+                col_name = column['name']
+                schema_data['tables'][table_name]['columns'][col_name] = {
+                    'type': column.get('type', 'varchar(255)'),
+                    'nullable': column.get('nullable', True),
+                    'primary_key': column.get('is_primary_key', False),
+                    'description': column.get('description', f'{col_name} column')
+                }
+                
+                # Handle foreign keys
+                if column.get('is_foreign_key') and column.get('referenced_table'):
+                    schema_data['tables'][table_name]['columns'][col_name]['foreign_key'] = {
+                        'table': column.get('referenced_table'),
+                        'column': column.get('referenced_column')
+                    }
         
-        db.session.commit()
+        # Write to temporary file and then add to service
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+            json.dump(schema_data, temp_file, indent=2)
+            temp_file_path = temp_file.name
+        
+        # Add schema using the service
+        success = schema_service.add_schema_from_json_file(temp_file_path, schema_name)
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_file_path)
+        
+        if not success:
+            raise Exception('Failed to save schema to JSON file')
         
         return jsonify({
             'success': True,
-            'message': f'Schema "{schema_name}" uploaded successfully'
+            'message': f'Schema "{schema_name}" uploaded successfully as JSON file'
         })
         
     except Exception as e:
@@ -473,104 +499,7 @@ def get_sqlserver_query_plan():
             'error': f'Failed to get query plan: {str(e)}'
         }), 500
 
-@app.route('/api/databases', methods=['GET'])
-def get_available_databases():
-    """Get available databases from API"""
-    try:
-        result = connection_api_service.get_available_databases()
-        
-        # If API is not available, provide demo databases for testing
-        if not result['success'] and 'Connection API key not configured' in result.get('error', ''):
-            result = connection_api_service.get_demo_databases()
-            
-        return jsonify(result)
-        
-    except Exception as e:
-        app.logger.error(f"Error getting available databases: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to get databases: {str(e)}'
-        }), 500
 
-@app.route('/api/databases/<database_name>/connection', methods=['GET'])
-def get_database_connection_string(database_name):
-    """Get connection string for a specific database from API"""
-    try:
-        # Check if it's a demo database
-        demo_databases = ['Northwind', 'AdventureWorks2019', 'WideWorldImporters']
-        if database_name in demo_databases:
-            result = connection_api_service.get_demo_connection_string(database_name)
-        else:
-            result = connection_api_service.get_connection_string_for_database(database_name)
-            
-        return jsonify(result)
-        
-    except Exception as e:
-        app.logger.error(f"Error getting connection string: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to get connection string: {str(e)}'
-        }), 500
-
-@app.route('/api/databases/<database_name>/test', methods=['POST'])
-def test_database_connection(database_name):
-    """Test connection to a specific database using API-provided connection string"""
-    try:
-        # Get connection string from API
-        demo_databases = ['Northwind', 'AdventureWorks2019', 'WideWorldImporters']
-        if database_name in demo_databases:
-            connection_result = connection_api_service.get_demo_connection_string(database_name)
-        else:
-            connection_result = connection_api_service.get_connection_string_for_database(database_name)
-            
-        if not connection_result['success']:
-            return jsonify(connection_result), 400
-            
-        # Format for SQL Server service
-        connection_params = connection_api_service.format_connection_for_sqlserver_service(
-            connection_result['connection']
-        )
-        
-        # Test the connection
-        result = sqlserver_service.test_connection(connection_params)
-        return jsonify(result)
-        
-    except Exception as e:
-        app.logger.error(f"Error testing database connection: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to test connection: {str(e)}'
-        }), 500
-
-@app.route('/api/databases/<database_name>/schema', methods=['GET'])
-def get_database_schema_via_api(database_name):
-    """Get schema for a specific database via API connection"""
-    try:
-        # Get connection string from API
-        demo_databases = ['Northwind', 'AdventureWorks2019', 'WideWorldImporters']
-        if database_name in demo_databases:
-            connection_result = connection_api_service.get_demo_connection_string(database_name)
-        else:
-            connection_result = connection_api_service.get_connection_string_for_database(database_name)
-            
-        if not connection_result['success']:
-            return jsonify(connection_result), 400
-            
-        # Format for SQL Server service
-        connection_params = connection_api_service.format_connection_for_sqlserver_service(
-            connection_result['connection']
-        )
-        
-        # Get schema
-        result = sqlserver_service.get_database_schema(connection_params, database_name)
-        return jsonify(result)
-        
-    except Exception as e:
-        app.logger.error(f"Error getting database schema: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to get schema: {str(e)}'
-        }), 500
 
 @app.errorhandler(404)
 def not_found_error(error):
