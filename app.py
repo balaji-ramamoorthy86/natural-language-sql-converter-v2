@@ -47,6 +47,41 @@ schema_service = SchemaService()
 sqlserver_service = SQLServerService()
 connection_api_service = ConnectionAPIService()
 
+def convert_analysis_to_json_schema(analysis_result, schema_name):
+    """Convert schema analyzer results to JSON schema format"""
+    json_schema = {
+        "schema_name": schema_name,
+        "description": f"AI-analyzed schema for {schema_name} database",
+        "tables": {}
+    }
+    
+    schema_info = analysis_result.get('schema_info', {})
+    descriptions = analysis_result.get('descriptions', {})
+    
+    for table_name, table_info in schema_info.items():
+        json_schema['tables'][table_name] = {
+            "description": descriptions.get('tables', {}).get(table_name, {}).get('description', f'Table: {table_name}'),
+            "columns": {}
+        }
+        
+        for column_info in table_info.get('columns', []):
+            col_name = column_info['name']
+            json_schema['tables'][table_name]['columns'][col_name] = {
+                "type": column_info.get('type', 'varchar(255)'),
+                "nullable": column_info.get('nullable', True),
+                "primary_key": column_info.get('is_primary_key', False),
+                "description": descriptions.get('columns', {}).get(table_name, {}).get(col_name, f'{col_name} column')
+            }
+            
+            # Add foreign key information if available
+            if column_info.get('foreign_key'):
+                json_schema['tables'][table_name]['columns'][col_name]['foreign_key'] = {
+                    "table": column_info['foreign_key'].get('table'),
+                    "column": column_info['foreign_key'].get('column')
+                }
+    
+    return json_schema
+
 with app.app_context():
     # Import models to ensure tables are created
     import models
@@ -333,10 +368,31 @@ def analyze_schema():
         analysis_result = analyzer.analyze_database(connection_info)
         
         if analysis_result['success']:
+            # Automatically create and save JSON schema from analysis
+            schema_name = connection_info.get('database', 'analyzed_schema')
+            json_schema = convert_analysis_to_json_schema(analysis_result, schema_name)
+            
+            # Save to JSON file automatically
+            import tempfile
+            import json
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                json.dump(json_schema, temp_file, indent=2)
+                temp_file_path = temp_file.name
+            
+            # Add schema using the service
+            success = schema_service.add_schema_from_json_file(temp_file_path, schema_name)
+            
+            # Clean up temp file
+            import os
+            os.unlink(temp_file_path)
+            
             return jsonify({
                 'success': True,
                 'analysis': analysis_result['analysis'],
-                'suggested_descriptions': analysis_result['descriptions']
+                'suggested_descriptions': analysis_result['descriptions'],
+                'schema_saved': success,
+                'schema_name': schema_name,
+                'message': f'Schema "{schema_name}" automatically saved to services/schemas/' if success else 'Analysis complete but failed to save schema'
             })
         else:
             return jsonify({
