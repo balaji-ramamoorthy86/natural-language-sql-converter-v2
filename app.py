@@ -10,6 +10,7 @@ from services.sql_validator import SQLValidator
 from services.schema_service import SchemaService
 from services.sqlserver_service import SQLServerService
 from services.connection_api_service import ConnectionAPIService
+from services.query_feedback_service import QueryFeedbackService
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,6 +36,7 @@ sql_validator = SQLValidator()
 schema_service = SchemaService()
 sqlserver_service = SQLServerService()
 connection_api_service = ConnectionAPIService()
+query_feedback_service = QueryFeedbackService()
 
 def convert_analysis_to_json_schema(analysis_result, schema_name):
     """Convert schema analyzer results to JSON schema format"""
@@ -150,6 +152,14 @@ def convert_to_sql():
         # Validate and optimize the generated SQL
         validation_result = sql_validator.validate_and_optimize(generated_sql)
         
+        # Run comprehensive feedback analysis
+        feedback_analysis = query_feedback_service.analyze_query_quality(
+            sql_query=generated_sql,
+            schema_context=schema_info,
+            natural_language=natural_language,
+            connection_info=None  # Will be added when connection info is available
+        )
+        
         # Store the query in memory for history
         query_record = add_query_to_history(
             natural_language=natural_language,
@@ -158,11 +168,15 @@ def convert_to_sql():
             is_valid=validation_result['is_valid']
         )
         
+        # Add feedback analysis to query record
+        query_record['feedback_analysis'] = feedback_analysis
+        
         return jsonify({
             'success': True,
             'sql': validation_result.get('optimized_sql', generated_sql),
             'explanation': sql_result.get('explanation', ''),
             'validation': validation_result,
+            'feedback': feedback_analysis,
             'query_id': query_record['id']
         })
         
@@ -584,7 +598,98 @@ def get_sqlserver_query_plan():
             'error': f'Failed to get query plan: {str(e)}'
         }), 500
 
+# Query Feedback endpoints
+@app.route('/feedback/analyze', methods=['POST'])
+def analyze_query_feedback():
+    """Analyze query with database connection for comprehensive feedback"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'sql_query' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'SQL query is required'
+            }), 400
+        
+        sql_query = data['sql_query']
+        natural_language = data.get('natural_language', '')
+        schema_context = data.get('schema_context', '')
+        connection_info = data.get('connection_info')
+        
+        # Run comprehensive feedback analysis with database connection
+        feedback_analysis = query_feedback_service.analyze_query_quality(
+            sql_query=sql_query,
+            schema_context=schema_context,
+            natural_language=natural_language,
+            connection_info=connection_info
+        )
+        
+        return jsonify({
+            'success': True,
+            'feedback': feedback_analysis
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error analyzing query feedback: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to analyze query: {str(e)}'
+        }), 500
 
+@app.route('/feedback/submit', methods=['POST'])
+def submit_user_feedback():
+    """Submit user feedback on query quality"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'query_id' not in data or 'rating' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Query ID and rating are required'
+            }), 400
+        
+        query_id = data['query_id']
+        rating = int(data['rating'])
+        comments = data.get('comments', '')
+        
+        if rating < 1 or rating > 5:
+            return jsonify({
+                'success': False,
+                'error': 'Rating must be between 1 and 5'
+            }), 400
+        
+        success = query_feedback_service.submit_user_feedback(query_id, rating, comments)
+        
+        return jsonify({
+            'success': success,
+            'message': 'Feedback submitted successfully' if success else 'Query not found'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error submitting user feedback: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to submit feedback: {str(e)}'
+        }), 500
+
+@app.route('/feedback/summary')
+def get_feedback_summary():
+    """Get feedback summary for monitoring and improvement"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        summary = query_feedback_service.get_feedback_summary(limit)
+        
+        return jsonify({
+            'success': True,
+            'summary': summary
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting feedback summary: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get feedback summary: {str(e)}'
+        }), 500
 
 @app.errorhandler(404)
 def not_found_error(error):
