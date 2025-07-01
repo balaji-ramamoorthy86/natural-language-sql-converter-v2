@@ -1,4 +1,4 @@
-// Natural Language to SQL Converter - Frontend JavaScript
+// Natural Language to SQL Converter - Frontend JavaScript - Updated 2025-01-01
 
 class SQLConverter {
     constructor() {
