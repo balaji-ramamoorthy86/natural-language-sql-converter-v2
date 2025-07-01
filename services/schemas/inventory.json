@@ -1,0 +1,168 @@
+{
+  "schema_name": "inventory",
+  "description": "Inventory management system for warehouse operations",
+  "tables": {
+    "products": {
+      "description": "Product information for inventory tracking",
+      "columns": {
+        "product_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique product identifier"
+        },
+        "product_name": {
+          "type": "varchar(255)",
+          "nullable": false,
+          "description": "Product name"
+        },
+        "sku": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Stock keeping unit"
+        },
+        "quantity_on_hand": {
+          "type": "int",
+          "nullable": false,
+          "description": "Current stock quantity"
+        },
+        "unit_cost": {
+          "type": "decimal(10,2)",
+          "nullable": false,
+          "description": "Cost per unit"
+        },
+        "reorder_level": {
+          "type": "int",
+          "nullable": false,
+          "description": "Minimum stock level before reordering"
+        },
+        "created_at": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Product creation timestamp"
+        }
+      }
+    },
+    "warehouses": {
+      "description": "Warehouse locations for inventory storage",
+      "columns": {
+        "warehouse_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique warehouse identifier"
+        },
+        "warehouse_name": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "Warehouse name"
+        },
+        "location": {
+          "type": "varchar(255)",
+          "nullable": false,
+          "description": "Warehouse physical location"
+        },
+        "capacity": {
+          "type": "int",
+          "nullable": false,
+          "description": "Maximum storage capacity"
+        },
+        "manager_name": {
+          "type": "varchar(100)",
+          "nullable": true,
+          "description": "Warehouse manager name"
+        }
+      }
+    },
+    "stock_movements": {
+      "description": "Track all inventory movements in and out",
+      "columns": {
+        "movement_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique movement identifier"
+        },
+        "product_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "products",
+            "column": "product_id"
+          },
+          "description": "Product reference"
+        },
+        "warehouse_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "warehouses",
+            "column": "warehouse_id"
+          },
+          "description": "Warehouse reference"
+        },
+        "movement_type": {
+          "type": "varchar(20)",
+          "nullable": false,
+          "description": "Type of movement (IN/OUT/TRANSFER/ADJUSTMENT)"
+        },
+        "quantity": {
+          "type": "int",
+          "nullable": false,
+          "description": "Quantity moved (positive for IN, negative for OUT)"
+        },
+        "movement_date": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Date and time of movement"
+        },
+        "reference_number": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "description": "External reference (PO number, invoice, etc.)"
+        },
+        "notes": {
+          "type": "text",
+          "nullable": true,
+          "description": "Additional notes about the movement"
+        }
+      }
+    },
+    "suppliers": {
+      "description": "Supplier information for procurement",
+      "columns": {
+        "supplier_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique supplier identifier"
+        },
+        "supplier_name": {
+          "type": "varchar(200)",
+          "nullable": false,
+          "description": "Supplier company name"
+        },
+        "contact_person": {
+          "type": "varchar(100)",
+          "nullable": true,
+          "description": "Primary contact person"
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": true,
+          "description": "Supplier email address"
+        },
+        "phone": {
+          "type": "varchar(20)",
+          "nullable": true,
+          "description": "Supplier phone number"
+        },
+        "address": {
+          "type": "text",
+          "nullable": true,
+          "description": "Supplier address"
+        }
+      }
+    }
+  }
+}
