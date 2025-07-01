@@ -885,7 +885,46 @@ function getSQLServerConnectionParams() {
     return params;
 }
 
+// Theme Management
+function toggleTheme() {
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const icon = themeToggle.querySelector('i');
+    const text = themeToggle.querySelector('span') || themeToggle.childNodes[themeToggle.childNodes.length - 1];
+    
+    if (body.classList.contains('light-theme')) {
+        // Switch to dark theme
+        body.classList.remove('light-theme');
+        icon.className = 'fas fa-sun me-1';
+        themeToggle.innerHTML = '<i class="fas fa-sun me-1"></i>Light';
+        localStorage.setItem('theme', 'dark');
+    } else {
+        // Switch to light theme
+        body.classList.add('light-theme');
+        icon.className = 'fas fa-moon me-1';
+        themeToggle.innerHTML = '<i class="fas fa-moon me-1"></i>Dark';
+        localStorage.setItem('theme', 'light');
+    }
+}
+
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const themeToggle = document.getElementById('themeToggle');
+    
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        if (themeToggle) {
+            themeToggle.innerHTML = '<i class="fas fa-moon me-1"></i>Dark';
+        }
+    } else {
+        if (themeToggle) {
+            themeToggle.innerHTML = '<i class="fas fa-sun me-1"></i>Light';
+        }
+    }
+}
+
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     window.sqlConverter = new SQLConverter();
+    initializeTheme();
 });
