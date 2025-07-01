@@ -1,0 +1,227 @@
+{
+  "schema_name": "financial",
+  "description": "Financial management system for accounting and reporting",
+  "tables": {
+    "accounts": {
+      "description": "Chart of accounts for financial tracking",
+      "columns": {
+        "account_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique account identifier"
+        },
+        "account_number": {
+          "type": "varchar(20)",
+          "nullable": false,
+          "description": "Account number for reference"
+        },
+        "account_name": {
+          "type": "varchar(200)",
+          "nullable": false,
+          "description": "Account name"
+        },
+        "account_type": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Account type (ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE)"
+        },
+        "parent_account_id": {
+          "type": "int",
+          "nullable": true,
+          "foreign_key": {
+            "table": "accounts",
+            "column": "account_id"
+          },
+          "description": "Parent account for hierarchical structure"
+        },
+        "is_active": {
+          "type": "bit",
+          "nullable": false,
+          "description": "Whether account is currently active"
+        }
+      }
+    },
+    "transactions": {
+      "description": "Financial transactions and journal entries",
+      "columns": {
+        "transaction_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique transaction identifier"
+        },
+        "transaction_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Date of transaction"
+        },
+        "reference_number": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "description": "External reference number"
+        },
+        "description": {
+          "type": "varchar(500)",
+          "nullable": false,
+          "description": "Transaction description"
+        },
+        "total_amount": {
+          "type": "decimal(15,2)",
+          "nullable": false,
+          "description": "Total transaction amount"
+        },
+        "created_by": {
+          "type": "varchar(100)",
+          "nullable": false,
+          "description": "User who created the transaction"
+        },
+        "created_at": {
+          "type": "datetime",
+          "nullable": false,
+          "description": "Transaction creation timestamp"
+        }
+      }
+    },
+    "transaction_details": {
+      "description": "Individual line items for each transaction",
+      "columns": {
+        "detail_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique detail line identifier"
+        },
+        "transaction_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "transactions",
+            "column": "transaction_id"
+          },
+          "description": "Transaction reference"
+        },
+        "account_id": {
+          "type": "int",
+          "nullable": false,
+          "foreign_key": {
+            "table": "accounts",
+            "column": "account_id"
+          },
+          "description": "Account being debited or credited"
+        },
+        "debit_amount": {
+          "type": "decimal(15,2)",
+          "nullable": true,
+          "description": "Debit amount (positive values)"
+        },
+        "credit_amount": {
+          "type": "decimal(15,2)",
+          "nullable": true,
+          "description": "Credit amount (positive values)"
+        },
+        "description": {
+          "type": "varchar(500)",
+          "nullable": true,
+          "description": "Line item description"
+        }
+      }
+    },
+    "vendors": {
+      "description": "Vendor information for accounts payable",
+      "columns": {
+        "vendor_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique vendor identifier"
+        },
+        "vendor_name": {
+          "type": "varchar(200)",
+          "nullable": false,
+          "description": "Vendor company name"
+        },
+        "contact_person": {
+          "type": "varchar(100)",
+          "nullable": true,
+          "description": "Primary contact person"
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": true,
+          "description": "Vendor email address"
+        },
+        "phone": {
+          "type": "varchar(20)",
+          "nullable": true,
+          "description": "Vendor phone number"
+        },
+        "tax_id": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "description": "Vendor tax identification number"
+        },
+        "payment_terms": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "description": "Payment terms (NET30, NET15, etc.)"
+        }
+      }
+    },
+    "invoices": {
+      "description": "Customer invoices and vendor bills",
+      "columns": {
+        "invoice_id": {
+          "type": "int",
+          "nullable": false,
+          "primary_key": true,
+          "description": "Unique invoice identifier"
+        },
+        "invoice_number": {
+          "type": "varchar(50)",
+          "nullable": false,
+          "description": "Invoice number"
+        },
+        "invoice_type": {
+          "type": "varchar(20)",
+          "nullable": false,
+          "description": "Invoice type (CUSTOMER, VENDOR)"
+        },
+        "vendor_id": {
+          "type": "int",
+          "nullable": true,
+          "foreign_key": {
+            "table": "vendors",
+            "column": "vendor_id"
+          },
+          "description": "Vendor reference for bills"
+        },
+        "invoice_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Invoice date"
+        },
+        "due_date": {
+          "type": "date",
+          "nullable": false,
+          "description": "Payment due date"
+        },
+        "total_amount": {
+          "type": "decimal(15,2)",
+          "nullable": false,
+          "description": "Total invoice amount"
+        },
+        "paid_amount": {
+          "type": "decimal(15,2)",
+          "nullable": false,
+          "description": "Amount already paid"
+        },
+        "status": {
+          "type": "varchar(20)",
+          "nullable": false,
+          "description": "Invoice status (DRAFT, SENT, PAID, OVERDUE)"
+        }
+      }
+    }
+  }
+}
