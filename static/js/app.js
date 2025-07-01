@@ -580,22 +580,136 @@ function showSchemaAnalyzer() {
     if (form) {
         form.onsubmit = handleSchemaAnalysis;
     }
+    
+    // Initialize authentication fields
+    toggleAuthFields();
 }
 
-async function handleSchemaAnalysis(event) {
-    event.preventDefault();
+// Toggle authentication fields based on selected type
+function toggleAuthFields() {
+    const authType = document.getElementById('authType').value;
+    const sqlAuthFields = document.getElementById('sqlAuthFields');
+    const windowsAuthInfo = document.getElementById('windowsAuthInfo');
+    const usernameField = document.getElementById('dbUsername');
+    const passwordField = document.getElementById('dbPassword');
     
+    if (authType === 'sql') {
+        sqlAuthFields.style.display = 'block';
+        windowsAuthInfo.style.display = 'none';
+        usernameField.required = true;
+        passwordField.required = true;
+    } else if (authType === 'windows') {
+        sqlAuthFields.style.display = 'none';
+        windowsAuthInfo.style.display = 'block';
+        usernameField.required = false;
+        passwordField.required = false;
+        usernameField.value = '';
+        passwordField.value = '';
+    } else {
+        sqlAuthFields.style.display = 'none';
+        windowsAuthInfo.style.display = 'none';
+        usernameField.required = false;
+        passwordField.required = false;
+    }
+}
+
+// Test database connection
+async function testConnection() {
+    const connectionInfo = getConnectionInfo();
+    if (!connectionInfo) return;
+    
+    const testButton = document.querySelector('button[onclick="testConnection()"]');
+    const resultDiv = document.getElementById('connectionTestResult');
+    
+    // Show loading state
+    testButton.disabled = true;
+    testButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testing...';
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-clock me-2"></i>Testing connection to SQL Server...
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/test-connection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                connection_info: connectionInfo
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Connection Successful!</strong><br>
+                    <small>Connected to: ${result.server_info || 'SQL Server'}</small>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Connection Failed:</strong><br>
+                    <small>${result.error}</small>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> ${error.message}
+            </div>
+        `;
+    } finally {
+        testButton.disabled = false;
+        testButton.innerHTML = '<i class="fas fa-plug me-2"></i>Test Connection';
+    }
+}
+
+// Get connection info from form
+function getConnectionInfo() {
     const dbType = document.getElementById('dbType').value;
+    const authType = document.getElementById('authType').value;
     const dbHost = document.getElementById('dbHost').value.trim();
     const dbPort = document.getElementById('dbPort').value.trim();
     const dbDatabase = document.getElementById('dbDatabase').value.trim();
     const dbUsername = document.getElementById('dbUsername').value.trim();
     const dbPassword = document.getElementById('dbPassword').value.trim();
     
-    if (!dbType || !dbHost || !dbDatabase || !dbUsername || !dbPassword) {
-        window.sqlConverter.showError('Please fill in all required database connection fields');
-        return;
+    if (!dbType || !authType || !dbHost || !dbDatabase) {
+        window.sqlConverter.showError('Please fill in all required fields');
+        return null;
     }
+    
+    if (authType === 'sql' && (!dbUsername || !dbPassword)) {
+        window.sqlConverter.showError('Please provide username and password for SQL authentication');
+        return null;
+    }
+    
+    return {
+        database_type: dbType,
+        auth_type: authType,
+        host: dbHost,
+        port: dbPort || '1433',
+        database: dbDatabase,
+        username: dbUsername,
+        password: dbPassword
+    };
+}
+
+async function handleSchemaAnalysis(event) {
+    event.preventDefault();
+    
+    const connectionInfo = getConnectionInfo();
+    if (!connectionInfo) return;
     
     const resultsDiv = document.getElementById('analysisResults');
     
@@ -617,14 +731,6 @@ async function handleSchemaAnalysis(event) {
     `;
     
     try {
-        const connectionInfo = {
-            database_type: dbType,
-            host: dbHost,
-            port: dbPort || (dbType === 'postgresql' ? 5432 : 1433),
-            database: dbDatabase,
-            username: dbUsername,
-            password: dbPassword
-        };
         
         const response = await fetch('/analyze-schema', {
             method: 'POST',
@@ -639,7 +745,12 @@ async function handleSchemaAnalysis(event) {
         const result = await response.json();
         
         if (result.success) {
-            displayAnalysisResults(result.analysis, result.suggested_descriptions);
+            displayAnalysisResults(result.analysis, result.suggested_descriptions, result.schema_saved, result.schema_name);
+            
+            // Show success message if schema was automatically saved
+            if (result.schema_saved) {
+                window.sqlConverter.showSuccess(`✓ Analysis complete! Schema "${result.schema_name}" automatically saved and added to dropdown.`);
+            }
         } else {
             resultsDiv.innerHTML = `
                 <div class="text-center py-4">
@@ -665,7 +776,7 @@ async function handleSchemaAnalysis(event) {
     }
 }
 
-function displayAnalysisResults(analysis, descriptions) {
+function displayAnalysisResults(analysis, descriptions, schemaSaved = false, schemaName = '') {
     const resultsDiv = document.getElementById('analysisResults');
     
     let html = `
@@ -676,6 +787,13 @@ function displayAnalysisResults(analysis, descriptions) {
                     Analysis Complete
                 </h6>
                 <p class="text-muted mb-3">AI has analyzed your database and generated descriptions for cryptic table names.</p>
+                ${schemaSaved ? `
+                    <div class="alert alert-success border-0 mb-3">
+                        <i class="fas fa-save me-2"></i>
+                        <strong>Schema Automatically Saved!</strong><br>
+                        <small>Schema "${schemaName}" has been saved to <code>services/schemas/${schemaName}.json</code> and is now available in the dropdown.</small>
+                    </div>
+                ` : ''}
             </div>
     `;
     
