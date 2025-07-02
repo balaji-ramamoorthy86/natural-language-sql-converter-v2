@@ -182,6 +182,91 @@ class SchemaAnalyzer:
                         'to_table': row['foreign_table_name'],
                         'to_column': row['foreign_column_name']
                     })
+                    
+            elif db_type == 'sqlserver':
+                cursor = conn.cursor()
+                
+                # Get table and column information for SQL Server
+                cursor.execute("""
+                    SELECT 
+                        t.TABLE_NAME,
+                        c.COLUMN_NAME,
+                        c.DATA_TYPE,
+                        c.IS_NULLABLE,
+                        c.COLUMN_DEFAULT,
+                        c.CHARACTER_MAXIMUM_LENGTH,
+                        c.NUMERIC_PRECISION,
+                        c.NUMERIC_SCALE,
+                        CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 'PRIMARY KEY' 
+                             WHEN fk.COLUMN_NAME IS NOT NULL THEN 'FOREIGN KEY'
+                             ELSE NULL END as CONSTRAINT_TYPE
+                    FROM INFORMATION_SCHEMA.TABLES t
+                    LEFT JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_NAME = c.TABLE_NAME AND t.TABLE_SCHEMA = c.TABLE_SCHEMA
+                    LEFT JOIN (
+                        SELECT ku.TABLE_NAME, ku.COLUMN_NAME, ku.TABLE_SCHEMA
+                        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+                        INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS ku
+                            ON tc.CONSTRAINT_TYPE = 'PRIMARY KEY' 
+                            AND tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                    ) pk ON t.TABLE_NAME = pk.TABLE_NAME AND c.COLUMN_NAME = pk.COLUMN_NAME AND t.TABLE_SCHEMA = pk.TABLE_SCHEMA
+                    LEFT JOIN (
+                        SELECT ku.TABLE_NAME, ku.COLUMN_NAME, ku.TABLE_SCHEMA
+                        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+                        INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS ku
+                            ON tc.CONSTRAINT_TYPE = 'FOREIGN KEY' 
+                            AND tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
+                    ) fk ON t.TABLE_NAME = fk.TABLE_NAME AND c.COLUMN_NAME = fk.COLUMN_NAME AND t.TABLE_SCHEMA = fk.TABLE_SCHEMA
+                    WHERE t.TABLE_TYPE = 'BASE TABLE' AND t.TABLE_SCHEMA = 'dbo'
+                    ORDER BY t.TABLE_NAME, c.ORDINAL_POSITION
+                """)
+                
+                # Process results
+                for row in cursor.fetchall():
+                    table_name = row[0]  # TABLE_NAME
+                    if table_name not in schema_info['tables']:
+                        schema_info['tables'][table_name] = {
+                            'columns': [],
+                            'row_count': 0,
+                            'sample_data': []
+                        }
+                    
+                    if row[1]:  # COLUMN_NAME exists
+                        column_info = {
+                            'name': row[1],  # COLUMN_NAME
+                            'type': row[2],  # DATA_TYPE
+                            'nullable': row[3] == 'YES',  # IS_NULLABLE
+                            'default': row[4],  # COLUMN_DEFAULT
+                            'max_length': row[5],  # CHARACTER_MAXIMUM_LENGTH
+                            'precision': row[6],  # NUMERIC_PRECISION
+                            'scale': row[7],  # NUMERIC_SCALE
+                            'is_primary_key': row[8] == 'PRIMARY KEY',  # CONSTRAINT_TYPE
+                            'is_foreign_key': row[8] == 'FOREIGN KEY'
+                        }
+                        schema_info['tables'][table_name]['columns'].append(column_info)
+                
+                # Get foreign key relationships for SQL Server
+                cursor.execute("""
+                    SELECT
+                        fk.name AS FK_NAME,
+                        tp.name AS parent_table,
+                        cp.name AS parent_column,
+                        tr.name AS referenced_table,
+                        cr.name AS referenced_column
+                    FROM sys.foreign_keys fk
+                    INNER JOIN sys.tables tp ON fk.parent_object_id = tp.object_id
+                    INNER JOIN sys.tables tr ON fk.referenced_object_id = tr.object_id
+                    INNER JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                    INNER JOIN sys.columns cp ON fkc.parent_column_id = cp.column_id AND fkc.parent_object_id = cp.object_id
+                    INNER JOIN sys.columns cr ON fkc.referenced_column_id = cr.column_id AND fkc.referenced_object_id = cr.object_id
+                """)
+                
+                for row in cursor.fetchall():
+                    schema_info['relationships'].append({
+                        'from_table': row[1],  # parent_table
+                        'from_column': row[2],  # parent_column
+                        'to_table': row[3],  # referenced_table
+                        'to_column': row[4]  # referenced_column
+                    })
                 
                 # Get sample data and row counts for analysis
                 for table_name in schema_info['tables']:
