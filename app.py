@@ -49,27 +49,38 @@ def convert_analysis_to_json_schema(analysis_result, schema_name):
     schema_info = analysis_result.get('schema_info', {})
     descriptions = analysis_result.get('descriptions', {})
     
-    for table_name, table_info in schema_info.items():
+    # Handle the nested tables structure from schema analyzer
+    tables_data = schema_info.get('tables', {})
+    
+    for table_name, table_info in tables_data.items():
         json_schema['tables'][table_name] = {
             "description": descriptions.get('tables', {}).get(table_name, {}).get('description', f'Table: {table_name}'),
             "columns": {}
         }
         
-        for column_info in table_info.get('columns', []):
-            col_name = column_info['name']
-            json_schema['tables'][table_name]['columns'][col_name] = {
-                "type": column_info.get('type', 'varchar(255)'),
-                "nullable": column_info.get('nullable', True),
-                "primary_key": column_info.get('is_primary_key', False),
-                "description": descriptions.get('columns', {}).get(table_name, {}).get(col_name, f'{col_name} column')
-            }
-            
-            # Add foreign key information if available
-            if column_info.get('foreign_key'):
-                json_schema['tables'][table_name]['columns'][col_name]['foreign_key'] = {
-                    "table": column_info['foreign_key'].get('table'),
-                    "column": column_info['foreign_key'].get('column')
-                }
+        # Handle columns list from schema analyzer
+        columns = table_info.get('columns', [])
+        for column_info in columns:
+            # Check if column_info is a dict (expected) or something else
+            if isinstance(column_info, dict):
+                col_name = column_info.get('name', '')
+                if col_name:
+                    json_schema['tables'][table_name]['columns'][col_name] = {
+                        "type": column_info.get('type', 'varchar(255)'),
+                        "nullable": column_info.get('nullable', True),
+                        "primary_key": column_info.get('is_primary_key', False),
+                        "description": descriptions.get('columns', {}).get(table_name, {}).get(col_name, f'{col_name} column')
+                    }
+                    
+                    # Add foreign key information if available
+                    if column_info.get('foreign_key'):
+                        json_schema['tables'][table_name]['columns'][col_name]['foreign_key'] = {
+                            "table": column_info['foreign_key'].get('table'),
+                            "column": column_info['foreign_key'].get('column')
+                        }
+            else:
+                # Log the unexpected format for debugging
+                app.logger.warning(f"Unexpected column format in table {table_name}: {type(column_info)} - {column_info}")
     
     return json_schema
 
